@@ -1,0 +1,107 @@
+
+hr {
+  border-top:1px;
+  margin-top: 15px;
+}
+
+.button {
+  vertical-align: middle;
+}
+
+.tab-panel {
+  background: white;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.small-title {
+  line-height: 30px;
+  height: 30px;
+  font-size: 16px;
+  padding-left: 5px;
+  color: #428bca
+}
+
+.medium-title {
+  color: #428bca;
+  font-size: 22px;
+  margin-right: 20px;
+  vertical-align: middle;
+}
+
+.large-title {
+  font-size: 24px;
+  color: #428bca;
+}
+
+.small-table {
+  margin-top: 10px;
+  width: 900px;
+}
+
+.medium-table {
+  margin-top: 10px;
+  width: 1200px;
+}
+
+.medium-input {
+  width: 200px;
+  margin-right: 10px;
+}
+
+.large-input {
+  width: 300px;
+  margin-right: 10px;
+}
+
+.xlarge-input {
+  width: 80%;
+  margin-right: 10px;
+}
+
+.list-item {
+  width:100%;
+  line-height: 40px;
+  cursor:pointer;
+  height: 40px;
+  display: inline-block;
+  border-bottom: 1px solid lightgray;
+}
+
+.small-list-item {
+  padding-left: 5px;
+  margin-right: 15px;
+  font-size:13px;
+  cursor:pointer;
+  height:30px;
+  line-height:30px;
+  border-bottom-width:1px;
+  border-bottom-color: lightgray;
+  border-bottom-style: solid;
+}
+
+.el-button--info {
+  color: #fff;
+  background-color: #409EFF;
+  border-color: #409EFF;
+}
+
+.el-button--default {
+  color: #409eff;
+  background: #ecf5ff;
+  border-color: #b3d8ff;
+}
+
+.el-table-add-row {
+  margin-top: 10px;
+  width: 100%;
+  height: 34px;
+  border: 1px dashed #c1c1cd;
+  border-radius: 3px;
+  cursor: pointer;
+  justify-content: center;
+  display: flex;
+  line-height: 34px;
+}

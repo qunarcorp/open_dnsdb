@@ -1,0 +1,27 @@
+*.pyc
+*.egg-info
+*.venv
+AUTHORS
+ChangeLog
+build/*
+.idea
+*/tmp/
+
+dnsdb_fe/.DS_Store
+dnsdb_fe/node_modules/
+dnsdb_fe/dist/
+dnsdb_fe/npm-debug.log*
+dnsdb_fe/yarn-debug.log*
+dnsdb_fe/yarn-error.log*
+dnsdb_fe/test/unit/coverage
+dnsdb_fe/test/e2e/reports
+dnsdb_fe/selenium-debug.log
+# Editor directories and files
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.db
+
+docs/_build/
+etc/dev/
