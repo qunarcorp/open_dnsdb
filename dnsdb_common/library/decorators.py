@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import json
 from datetime import datetime
 from functools import wraps
@@ -13,6 +14,11 @@ from ..dal.operation_log import OperationLogDal
 from ..library.exception import DnsdbException
 from ..library.log import getLogger
 from ..library.param_validator import ParamValidator
+
+try:
+    basestring     # Python 2
+except NameError:  # Python 3
+    basestring = (str, )
 
 CONF = cfg.CONF
 log = getLogger(__name__)
@@ -48,7 +54,7 @@ def authenticate(func):
 def admin_required(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        print current_user
+        print(current_user)
         if not current_user.is_authenticated:
             return abort(401)
         if not current_user.is_administrator:
@@ -118,7 +124,7 @@ def parse_params(param_meta=None, need_username=False):
                 v = params[k]
                 if v is None:
                     params.pop(k)
-                if isinstance(v, (str, unicode)):
+                if isinstance(v, basestring):
                     params[k] = v.strip()
 
             kwargs.update(params)
@@ -204,7 +210,7 @@ def timer(func):
         start = datetime.now()
         result = func(*args, **kwargs)
         end = datetime.now()
-        print func.__name__, (end - start).total_seconds()
+        print(func.__name__, (end - start).total_seconds())
         return result
 
     return _wrap
@@ -214,9 +220,9 @@ def local_notify(func):
     @wraps(func)
     def _wrap(*args, **kwargs):
         if CONF.etc.env == 'local':
-            print '\n______________________________'
-            print u'func: %s\n args: %s\n kwargs:\n %s' % (func.__name__, args, json.dumps(kwargs, indent=4))
-            print '\n______________________________\n'
+            print('\n______________________________')
+            print(u'func: %s\n args: %s\n kwargs:\n %s' % (func.__name__, args, json.dumps(kwargs, indent=4)))
+            print('\n______________________________\n')
             return
         return func(*args, **kwargs)
 

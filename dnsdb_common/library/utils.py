@@ -16,6 +16,11 @@ from dnsdb_common.dal.models import DnsSerial
 from dnsdb_common.library.exception import DnsdbException, BadParam
 from dnsdb_common.library.log import getLogger
 
+try:
+    basestring     # Python 2
+except NameError:  # Python 3
+    basestring = (str, )
+
 log = getLogger(__name__)
 
 CONF = cfg.CONF
@@ -91,9 +96,7 @@ def is_valid_ip_bysocket(ip):
 
 
 def is_string(s):
-    if s is None:
-        return False
-    return type(s) is unicode or type(s) is str
+    return isinstance(s, basestring)
 
 
 def select_best_matched_domain(db, domain_name):

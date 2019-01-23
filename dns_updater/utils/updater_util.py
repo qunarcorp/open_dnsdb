@@ -17,6 +17,11 @@ from dnsdb_common.library.email_util import send_email
 from dnsdb_common.library.exception import UpdaterErr
 from dnsdb_common.library.log import getLogger
 
+try:
+    long        # Python 2
+except NameError:
+    long = int  # Python 3
+
 log = getLogger(__name__)
 
 CONF = cfg.CONF

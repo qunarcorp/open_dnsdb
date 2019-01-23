@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import json
 import threading
 import time
@@ -75,7 +76,7 @@ class DeployThread(threading.Thread):
         job = OperationLogDal.get_deploy_job(self.job_id)
         data = dict(op_result='ok')
         data['op_after'] = json.loads(job.op_after)
-        print json.dumps(data['op_after'], indent=4)
+        print(json.dumps(data['op_after'], indent=4))
         if self.unfinished:
             data['op_result'] = 'fail'
             data['op_after']['unfinished'] = self.unfinished
@@ -90,8 +91,8 @@ class DeployThread(threading.Thread):
             hosts = info['hosts']
             for host_ip in hosts:
                 try:
-                    print DnsUpdaterApi(host_ip=host_ip).notify_update(self.deploy_type, group_name,
-                                                                       group_conf_md5=conf_md5, deploy_id=self.job_id)
+                    print(DnsUpdaterApi(host_ip=host_ip).notify_update(self.deploy_type, group_name,
+                                                                       group_conf_md5=conf_md5, deploy_id=self.job_id))
                 except Exception as e:
                     log.error('notify %s to update %s failed, %s' % (host_ip, self.deploy_type, e))
                     self.notify_failed.append(host_ip)
@@ -105,8 +106,8 @@ class DeployThread(threading.Thread):
         for group_name, hosts in hosts.iteritems():
             for host in hosts:
                 try:
-                    print DnsUpdaterApi(host_ip=host).notify_update(self.deploy_type, group_name,
-                                                                    deploy_id=self.job_id, acl_files=acl_files)
+                    print(DnsUpdaterApi(host_ip=host).notify_update(self.deploy_type, group_name,
+                                                                    deploy_id=self.job_id, acl_files=acl_files))
                 except Exception as e:
                     log.error('notify %s to update %s failed, %s' % (host, self.deploy_type, e))
                     self.notify_failed.append(e)

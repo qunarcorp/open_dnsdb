@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 from dns_updater.utils.updater_util import *
 
 TMP_DIR = CONF.etc.tmp_dir
@@ -83,7 +84,7 @@ def handler(self):
             if DnsdbApi.can_reload():
                 reload_and_backup_zones(zone_file_dict)
                 DnsdbApi.update_zone_serial(name)
-                print 'update_zone_serial'
+                print('update_zone_serial')
             return True
         except UpdaterErr as e:
             log.error(e.message)

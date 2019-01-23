@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
+from __future__ import print_function
 from flask import (Blueprint)
 
 from dnsdb_common.dal.host_group_conf import HostGroupConfDal
@@ -85,5 +86,5 @@ def get_zone_info(zone_name):
 @parse_params([dict(name='zone_name', type=str, required=True, nullable=False)])
 @resp_wrapper_json
 def update_zone_serial(zone_name):
-    print zone_name
+    print(zone_name)
     return ZoneRecordDal.update_serial_num(zone_name)

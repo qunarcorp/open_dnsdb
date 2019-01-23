@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import json
 from collections import defaultdict
 
@@ -288,7 +289,7 @@ class ViewRecordDal(object):
     @staticmethod
     @commit_on_success
     def increase_serial_num(zone_name):
-        print 'increase_serial_num: ', zone_name
+        print('increase_serial_num: ', zone_name)
         serials = DnsSerial.query.filter_by(zone_name=zone_name).all()
         if len(serials) != 1:
             raise BadParam('Zone serial should be unique: %s' % zone_name, msg_ch=u'zone serial记录不存在或者不唯一')

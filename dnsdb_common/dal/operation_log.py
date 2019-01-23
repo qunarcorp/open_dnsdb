@@ -8,6 +8,11 @@ from . import db, commit_on_success
 from .models import OperationLog
 from .models import OperationLogDetail
 
+try:
+    basestring     # Python 2
+except NameError:  # Python 3
+    basestring = (str, )
+
 
 def format_time(time_str, time_type):
     if time_type == 'start':
@@ -41,7 +46,7 @@ class OperationLogDal(object):
     @staticmethod
     def add_log_detail(log_id, reason):
         session = db.session
-        if not isinstance(reason, (str, unicode)):
+        if not isinstance(reason, basestring):
             reason = str(reason)
         if len(reason) > 1024:
             reason = reason[:1024]
