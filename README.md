@@ -36,7 +36,7 @@ OpenDnsdb并不是一个DNS服务器，而是一个对现有DNS服务器的管�
 * dnsdb_fe/
 	web ui
 
-* script/
+* tools/
 	同步脚本, 各种工具.
 
 * etc/
@@ -56,9 +56,15 @@ OpenDnsdb并不是一个DNS服务器，而是一个对现有DNS服务器的管�
 * 初始化项目python环境: python tools/install_venv.py
 * 启用虚拟环境 source .venv/bin/activate 
 * 初始化数据库
+    *  数据库配置: etc/beta/common.conf
+		```
+		[DB]
+		connection=sqlite:////usr/local/open_dnsdb/dnsdb.db
+		```
+	*  touch /usr/local/open_dnsdb/dnsdb.db 新建数据文件 
 	*  export FLASK_APP=dnsdb_command.py
 	*  export FLASK_ENV=beta
-	*  flask deploy (生成测试账号: test)
+	*  flask deploy (生成测试账号: test 密码:123456)
 * 生成程序控制脚本: tools/with_venv.sh python setup.py install
 * 安装supervisor用于管理python进程:
 	* 安装: sudo pip install supervisor
