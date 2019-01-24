@@ -2,6 +2,11 @@
 
 import re
 
+try:
+    basestring
+except NameError:
+    basestring = (str, )
+
 def _match_pattern(pattern, string):
     ptn = re.search(r'(%s)' % pattern, string)
     if ptn is None:

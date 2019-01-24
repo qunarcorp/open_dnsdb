@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from __future__ import print_function
 import json
 import os
 import re
@@ -85,7 +86,7 @@ def parse_zone_file(zone_name, zone_file, user, only_a=False):
 
     for parts in records:
         if len(parts) != 4 and len(parts) != 5:
-            print zone_name, ": ", parts
+            print(zone_name, ": ", parts)
             continue
 
         # 获得完整的域名
@@ -263,7 +264,7 @@ def import_acl_subnet(acl_dir, user, add_overlap=True):
     if isp_config:
         with db.session.begin(subtransactions=True):
             db.session.bulk_insert_mappings(ViewIsps, isp_config)
-        print 'add isp conf success'
+        print('add isp conf success')
 
     overlap = {}
     for item in ViewIsps.query.all():
@@ -275,7 +276,7 @@ def import_acl_subnet(acl_dir, user, add_overlap=True):
         if not os.path.exists(acl_path):
             continue
         if ViewAclSubnet.query.filter_by(origin_acl=acl_name).first():
-            print 'There already have subnet for %s in database' % acl_name
+            print('There already have subnet for %s in database' % acl_name)
 
         overlap_subnets, subnets = parse_acl_file(acl_path)
         if overlap_subnets:
@@ -297,5 +298,5 @@ def import_acl_subnet(acl_dir, user, add_overlap=True):
             db.session.bulk_insert_mappings(ViewAclSubnet, subnet_mapping)
 
     if overlap:
-        print 'There are overlap_subnets in files:'.format(overlap.keys())
-        print json.dumps(overlap, indent=4)
+        print('There are overlap_subnets in files:'.format(overlap.keys()))
+        print(json.dumps(overlap, indent=4))

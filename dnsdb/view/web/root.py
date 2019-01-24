@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
+from __future__ import print_function
 from flask import (abort, Blueprint)
 from flask import render_template, url_for
 from flask_login import login_required
@@ -14,8 +15,8 @@ bp = Blueprint('root', 'root')
 @bp.route("/api/", methods=['GET'])
 def root(path=''):
     try:
-        print url_for('static', filename='index.html')
-        print url_for('static', filename='favicon.ico')
+        print(url_for('static', filename='index.html'))
+        print(url_for('static', filename='favicon.ico'))
         return render_template('index.html')
     except TemplateNotFound:
         abort(404)

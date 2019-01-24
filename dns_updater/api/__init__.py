@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 
+from __future__ import print_function
 from flask import (Blueprint)
 from oslo.config import cfg
 
@@ -38,6 +39,6 @@ def update_conf(update_type, group_name, params):
     if group_name != CONF.host_group:
         return send_alarm_email(
             u'Host %s group not match: local %s, param: %s' % (CONF.host_ip, CONF.host_group, group_name))
-    print update_type, params
+    print(update_type, params)
     start_update_thread(update_type, group_name=group_name, **params)
     return
