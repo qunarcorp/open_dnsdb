@@ -17,6 +17,12 @@ OpenDnsdb并不是一个DNS服务器，而是一个对现有DNS服务器的管�
 
 对OpenDnsdb的操作，会生成DNS配置文件并同步给DNS服务器。也就是说OpenDnsdb的故障或不可用并不会对DNS服务本身造成任何影响.
 
+OpenDnsdb is an open source DNS management system for the OPS team. It is used to add, modify, and delete zones/records. Use simple and reliable methods to manage View, ACL, network segment, etc. Detailed logs for auditing.
+
+OpenDnsdb is not a DNS server, but a management system for existing DNS servers, providing Web management UI and command line tools.
+
+For OpenDnsdb operations, a DNS configuration file is generated and synchronized to the DNS server. That is to say, the failure or unavailability of OpenDnsdb does not affect the DNS service itself.
+
 
 ## 主要功能
 
