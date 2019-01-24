@@ -1,3 +1,5 @@
+![](https://img.shields.io/github/license/qunarcorp/open_dnsdb.svg)
+![](https://img.shields.io/github/languages/code-size/qunarcorp/open_dnsdb.svg)
 # OpenDnsdb
 
 ## 项目主页
