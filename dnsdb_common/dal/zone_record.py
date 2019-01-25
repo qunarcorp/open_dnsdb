@@ -45,7 +45,7 @@ class ZoneRecordDal(object):
 
     @staticmethod
     def list_zone_ttl():
-        pattern = re.compile(r'\$TTL\s+(\d+)\s+;')
+        pattern = re.compile(r'\$TTL\s+(\d+)\s?')
         zone_ttl = {zone: pattern.match(header).group(1)
                     for zone, header in db.session.query(DnsHeader.zone_name, DnsHeader.header_content)}
 

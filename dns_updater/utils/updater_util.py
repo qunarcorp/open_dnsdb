@@ -190,7 +190,7 @@ def send_zone_diff_email(content):
 
 
 def send_alarm_email(content):
-    send_email("[DNSDB-UPDATER alarm: %s]" % CONF.host_group, content)
+    send_email("[DNSDB-UPDATER alarm: %s]" % CONF.host_group, content, receivers=CONF.MAIL.alert_list)
 
 
 def _make_tmp_zone_filepath(name):

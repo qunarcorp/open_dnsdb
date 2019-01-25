@@ -58,7 +58,7 @@ def _build_zonename_for_PTR_zone(zone):
     return zonename + "IN-ADDR.ARPA"
 
 
-def handler(self):
+def handler():
     zone_list = DnsdbApi.get_update_zones(CONF.host_group)
     for name in zone_list:
         zone_file_dict = {}

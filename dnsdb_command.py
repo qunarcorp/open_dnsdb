@@ -65,12 +65,13 @@ def parse_zone_file(zone_name, zone_file, user, only_a=False):
     """
     1、删除以';'开头的注释行
     2、泛域名和非A/CNAME类型的域名保留在zone header中
-    3、添加serial到
+    3、添加serial
     """
-    header_pattern = re.compile(r'TXT|MX|SOA|NS|\$ORIGIN|;|\)|^[@\*]|^[\s\d]+$')
+    header_pattern = re.compile(r'TXT|MX|SOA|NS|\$ORIGIN|;|\)|^[\$@\*]|^[\s\d]+$')
     delete_pattern = re.compile(r'^;.*$')
     serial_pattern = re.compile(r'(\d+)(?=\s+; Serial)')
 
+    is_add = True
     record_mapping = []
 
     records = []
@@ -86,8 +87,9 @@ def parse_zone_file(zone_name, zone_file, user, only_a=False):
 
     for parts in records:
         if len(parts) != 4 and len(parts) != 5:
-            print(zone_name, ": ", parts)
-            continue
+            is_add = False
+            print(u'%s 记录格式错误： %s, 放弃添加该zone' % (zone_name, parts))
+            break
 
         # 获得完整的域名
         name = parts[0] + '.' + zone_name
@@ -113,7 +115,7 @@ def parse_zone_file(zone_name, zone_file, user, only_a=False):
                                    update_user=user,
                                    record=record,
                                    ttl=ttl))
-    return header, record_mapping
+    return is_add, header, record_mapping
 
 
 def _check_subnet_overlap_subnet(subnets):
@@ -146,7 +148,7 @@ def parse_acl_file(file_name):
 @app.shell_context_processor
 def make_shell_context():
     return dict(db=db, User=User, Role=Role,
-                DnsZoneConf=DnsZoneConf, DnsNamedConf=DnsNamedConf,
+                DnsZoneConf=DnsZoneConf, DnsNamedConf=DnsNamedConf, DnsHostGroup=DnsHostGroup,
                 DnsSerial=DnsSerial, DnsHeader=DnsHeader, DnsColo=DnsColo,
                 ViewAclSubnet=ViewAclSubnet, ViewIsps=ViewIsps,
                 UserDal=UserDal)
@@ -169,6 +171,12 @@ def import_named_conf(group_name, file_path):
     """
     导入某个主机组的named.conf文件
     """
+    if not DnsHostGroup.query.filter_by(group_name=group_name).first():
+        print(u'主机组%s不存在，请添加主机配置' % group_name)
+        return
+    if DnsNamedConf.query.filter_by(name=group_name).first():
+        print(u'主机组named.conf配置已存在，不允许重复导入')
+        return
     header, zones = parse_named_conf(file_path, group_name)
     named_conf = DnsNamedConf(name=group_name, conf_content=header)
     with db.session.begin(subtransactions=True):
@@ -186,15 +194,22 @@ def import_zone_records(zone_dir, zone_group, user):
     zone文件中代表serial_num的一行必须是如下格式：
         '3000000026  ; Serial'
     """
+    if not DnsHostGroup.query.filter_by(group_name=zone_group).first():
+        print(u'主机组%s不存在，请添加主机配置' % zone_group)
+        return
     for zone_name in os.listdir(zone_dir):
-        if not zone_name.endswith('.com'):
+        if DnsHeader.query.filter_by(zone_name=zone_name).first():
+            print(u'%s在DNSDB中已存在，放弃添加该zone' % zone_name)
             continue
-        header, record_mapping = parse_zone_file(zone_name, os.path.join(zone_dir, zone_name), user)
+        is_add, header, record_mapping = parse_zone_file(zone_name, os.path.join(zone_dir, zone_name), user)
+        if not is_add:
+            continue
         with db.session.begin(subtransactions=True):
             db.session.add(DnsHeader(zone_name=zone_name, header_content=header))
             db.session.add(DnsSerial(zone_name=zone_name, zone_group=zone_group,
                                      serial_num=3000000000, update_serial_num=3000000000))
             db.session.bulk_insert_mappings(DnsRecord, record_mapping)
+        print(u'添加zone %s 管理成功' % zone_name)
 
 
 @app.cli.command()
@@ -217,36 +232,21 @@ def import_view_records(zone_file, zone_group, user):
 
 
 @app.cli.command()
-@click.option('--user', help='User name')
-def add_colo_config(user):
-    colo_config = [
-        ('cn0', 'subnet'),
-        ('cn1', 'subnet'),
-        ('cn2', 'subnet'),
-        ('cn5', 'subnet'),
-        ('cn6', 'subnet'),
-        ('cn8', 'subnet'),
-        ('cna', 'subnet'),
-        ('cor', 'subnet'),
-        ('hk1', 'subnet'),
-        ('zh', 'subnet'),
-        ('cn1', 'view'),
-        ('cn5', 'view'),
-        ('cn6', 'view'),
-        ('cn8', 'view'),
-        ('cnb', 'view'),
-        ('hk1', 'view'),
-        ('zh', 'view')
-    ]
-    colo_mapping = [dict(colo_name=item[0], colo_group=item[1], create_user=user) for item in colo_config]
-
+@click.option('--group', default='subnet')
+@click.option('--colos')
+@click.option('--user', default='admin')
+def add_colo_config(colos, user, group):
+    if colos is None:
+        print(u'缺少必要的参数: --colos')
+    colos = colos.split(',')
+    colo_mapping = [dict(colo_name=item, colo_group=group, create_user=user) for item in colos]
     with db.session.begin(subtransactions=True):
         db.session.bulk_insert_mappings(DnsColo, colo_mapping)
 
 
 @app.cli.command()
 @click.option('--acl_dir', help='acl file')
-@click.option('--user', help='user name')
+@click.option('--user', help='user name', default='admin')
 def import_acl_subnet(acl_dir, user, add_overlap=True):
     """
     :param acl_dir: dir of acl file, please make sure that the acl_names in this file has already in the database

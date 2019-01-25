@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import fcntl
+import importlib
 import os
 import signal
-from sys import exit
 import sys
-import importlib
+import time
 
 from oslo.config import cfg
 
-from dns_updater.utils.tool_classes import (QApplication, GenericWorker)
+from dns_updater.config import setup_config
+from dns_updater.utils.tool_classes import (QApplication)
 from dnsdb_common.library.exception import UpdaterErr
 from dnsdb_common.library.log import (getLogger, setup)
-from dns_updater.config import setup_config
-
 
 setup('dnsdb_upater_zone')
 log = getLogger(__name__)
@@ -24,12 +23,14 @@ CONF = cfg.CONF
 
 def _get_handler():
     mapping = {
-        'Master': 'workers.zone_worker',
-        'ViewMaster': 'workers.view_worker'
+        'ViewMaster': 'dns_updater.workers.view_worker',
+        'default': 'dns_updater.workers.zone_worker'
     }
     zone_group = CONF.host_group
+    if not zone_group.endswith('Master'):
+        raise UpdaterErr('%s, slave group does not need to start updater.' % zone_group)
     # dnsdb请求zone信息
-    module = importlib.import_module(mapping[zone_group])
+    module = importlib.import_module(mapping.get(zone_group, mapping['default']))
     return module.handler
 
 
@@ -73,9 +74,8 @@ def _check_necessary_options():
 
 
 def _signal_handler(n=0, e=0):
-    log.info("Shuting down normally.")
-    exit(0)
-
+    log.error("Shuting down normally.")
+    sys.exit(0)
 
 
 class DnsdbUpdater(QApplication):
@@ -95,23 +95,16 @@ class DnsdbUpdater(QApplication):
             signal.signal(signal.SIGTERM, _signal_handler)
         except Exception as e:
             log.exception(e, exc_info=1)
-            exit(1)
+            sys.exit(1)
 
     def main_loop(self):
-        class Worker(GenericWorker):
-            handler = _get_handler()
-
-        self.worker = Worker(CONF.etc.zone_update_interval)
-        self.worker.start()
-        self.worker.join()
-
-
-    def on_shutdown(self):
-        self.worker.stop()
+        handler = _get_handler()
+        while True:
+            handler()
+            time.sleep(CONF.etc.zone_update_interval)
 
 
 updater = DnsdbUpdater().make_entry_point()
-
 
 if __name__ == '__main__':
     updater()

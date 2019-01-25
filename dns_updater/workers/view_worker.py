@@ -61,7 +61,7 @@ def _send_all_changes_to_opsteam(isp_file_dict):
     send_zone_diff_email(diff_content)
 
 
-def handler(self):
+def handler():
     zone_list = DnsdbApi.get_update_zones(CONF.host_group)
     for zone_name in zone_list:
         try:

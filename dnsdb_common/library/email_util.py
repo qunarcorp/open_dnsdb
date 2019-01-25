@@ -48,7 +48,6 @@ def send_email(subject, content, sender=None, receivers=None):
 
 def send_alert_email(content, sender=None):
     receivers = CONF.MAIL.alert_list
-    print(receivers)
     subject = "[DNSDB alarm]"
     send_email(subject, content, sender, receivers)
 

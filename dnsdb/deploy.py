@@ -52,17 +52,6 @@ class DeployThread(threading.Thread):
         if job.op_result == 'start':
             OperationLogDal.update_opration_log(self.job_id, {'op_result': 'fail'})
 
-    def update_depoly_job(self):
-        job = OperationLogDal.get_deploy_job(self.job_id)
-        data = dict(op_result='ok')
-        data['op_after'] = json.loads(job.op_after)
-        if self.unfinished:
-            data['op_result'] = 'fail'
-            data['op_after']['unfinished'] = self.unfinished
-            data['op_after'] = json.dumps(data['op_after'])
-            send_alert_email(u'主机更新named.conf失败, 主机信息:\n%s' % json.dumps(self.unfinished, indent=4))
-        OperationLogDal.update_opration_log(self.job_id, data)
-
     def update_named_conf(self):
         self.unfinished = {}
         for group_name, info in self.deploy_info.iteritems():
@@ -110,6 +99,7 @@ class DeployThread(threading.Thread):
                 self.update_acl()
             if self.notify_failed:
                 pass
+        with self.app.app_context():
             self.check_normal_update()
 
 

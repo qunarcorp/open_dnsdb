@@ -1,0 +1,10 @@
+$TTL 7200   ; 2 hours
+@       IN SOA  localhost. root.localhost. (
+            pre_serial  ; Serial
+            3600            ; Refresh (1 hour)
+            900             ; Retry (15 minutes)
+            3600000         ; Expire (5 weeks 6 days 16 hours)
+            3600            ; Minimum (1 hour)
+            )
+@   2D  IN  NS  localhost.
+$ORIGIN zone_name.
