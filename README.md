@@ -58,6 +58,7 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
 
 
 ## 安装手册
+* 环境 Python:2.7.13  pip:18.1
 * 安装virtualenv: pip install virtualenv
 * 项目克隆
 * 切换到项目目录: cd open_dnsdb 

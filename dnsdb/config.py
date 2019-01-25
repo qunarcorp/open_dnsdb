@@ -31,10 +31,7 @@ CONF.register_opts([
 CONF.register_opts([
     cfg.StrOpt('allow_ip'),
     cfg.StrOpt('secret_key'),
-    cfg.StrOpt('env'),
-    cfg.StrOpt('local_group'),
-    cfg.StrOpt('acl_dir'),
-    cfg.StrOpt('view_acl_group')
+    cfg.StrOpt('env')
 ], 'etc')
 
 CONF.register_opts([

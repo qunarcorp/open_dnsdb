@@ -71,7 +71,6 @@ def get_user(username):
                dict(name='role_id', type=str, required=False, nullable=False)])
 @resp_wrapper_json
 def list_user(**kwargs):
-    print(kwargs)
     return UserDal.list_user(**kwargs)
 
 

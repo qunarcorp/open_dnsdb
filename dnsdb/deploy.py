@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
 import json
 import threading
 import time
@@ -9,7 +8,6 @@ from flask import Flask
 from oslo.config import cfg
 
 from dnsdb_common.dal import db
-# from dnsdb_common.dal.host_group_conf import HostGroupConfDal
 from dnsdb_common.dal.operation_log import OperationLogDal
 from dnsdb_common.library.api import DnsUpdaterApi
 from dnsdb_common.library.email_util import send_alert_email
@@ -48,24 +46,6 @@ class DeployThread(threading.Thread):
         self.unfinished = {}
         self.notify_failed = []
 
-    # def check_update(self):
-    #     event = threading.Event()
-    #     while self.expire > 0:
-    #         print 'check update'
-    #         for group_name in self.unfinished.keys():
-    #             info = self.deploy_info[group_name]
-    #             conf_md5 = info['md5']
-    #             hosts = HostGroupConfDal.get_not_update_host(conf_md5, group_name)
-    #             if hosts:
-    #                 self.unfinished[group_name] = hosts
-    #             else:
-    #                 self.unfinished.pop(group_name, None)
-    #
-    #         if not self.unfinished:
-    #             break
-    #         event.wait(10)
-    #         self.expire -= 10
-
     def check_normal_update(self):
         time.sleep(self.expire)
         job = OperationLogDal.get_deploy_job(self.job_id)
@@ -76,7 +56,6 @@ class DeployThread(threading.Thread):
         job = OperationLogDal.get_deploy_job(self.job_id)
         data = dict(op_result='ok')
         data['op_after'] = json.loads(job.op_after)
-        print(json.dumps(data['op_after'], indent=4))
         if self.unfinished:
             data['op_result'] = 'fail'
             data['op_after']['unfinished'] = self.unfinished
@@ -91,8 +70,10 @@ class DeployThread(threading.Thread):
             hosts = info['hosts']
             for host_ip in hosts:
                 try:
-                    print(DnsUpdaterApi(host_ip=host_ip).notify_update(self.deploy_type, group_name,
-                                                                       group_conf_md5=conf_md5, deploy_id=self.job_id))
+                    result = DnsUpdaterApi(host_ip=host_ip).notify_update(self.deploy_type, group_name,
+                                                                          group_conf_md5=conf_md5,
+                                                                          deploy_id=self.job_id)
+                    log.error('notify %s to update %s success, %s' % (host_ip, self.deploy_type, result))
                 except Exception as e:
                     log.error('notify %s to update %s failed, %s' % (host_ip, self.deploy_type, e))
                     self.notify_failed.append(host_ip)
@@ -106,8 +87,9 @@ class DeployThread(threading.Thread):
         for group_name, hosts in hosts.iteritems():
             for host in hosts:
                 try:
-                    print(DnsUpdaterApi(host_ip=host).notify_update(self.deploy_type, group_name,
-                                                                    deploy_id=self.job_id, acl_files=acl_files))
+                    result = DnsUpdaterApi(host_ip=host).notify_update(self.deploy_type, group_name,
+                                                                    deploy_id=self.job_id, acl_files=acl_files)
+                    log.info('notify %s to update %s success, %s' % (host, self.deploy_type, result))
                 except Exception as e:
                     log.error('notify %s to update %s failed, %s' % (host, self.deploy_type, e))
                     self.notify_failed.append(e)

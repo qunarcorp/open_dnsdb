@@ -15,8 +15,6 @@ bp = Blueprint('root', 'root')
 @bp.route("/api/", methods=['GET'])
 def root(path=''):
     try:
-        print(url_for('static', filename='index.html'))
-        print(url_for('static', filename='favicon.ico'))
         return render_template('index.html')
     except TemplateNotFound:
         abort(404)

@@ -16,7 +16,7 @@ CONF = cfg.CONF
 
 
 def start_acl_deploy_job(user, acl_list, conf_type='acl'):
-    acl_groups = CONF.etc.view_acl_group.split(',')
+    acl_groups = CONF.view.acl_groups.split(',')
     hosts = {}
     unfinished = []
     for group in acl_groups:

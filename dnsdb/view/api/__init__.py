@@ -86,5 +86,4 @@ def get_zone_info(zone_name):
 @parse_params([dict(name='zone_name', type=str, required=True, nullable=False)])
 @resp_wrapper_json
 def update_zone_serial(zone_name):
-    print(zone_name)
     return ZoneRecordDal.update_serial_num(zone_name)
