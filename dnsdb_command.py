@@ -107,6 +107,8 @@ def parse_zone_file(zone_name, zone_file, user, only_a=False):
             else:
                 ttl = int(parts[1])
 
+        if record_type != 'A' or record_type != 'CNAME':
+            continue
         if only_a and record_type != "A":
             continue
         record_mapping.append(dict(domain_name=name,
