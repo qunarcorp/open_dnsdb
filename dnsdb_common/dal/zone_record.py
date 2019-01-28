@@ -46,8 +46,11 @@ class ZoneRecordDal(object):
     @staticmethod
     def list_zone_ttl():
         pattern = re.compile(r'\$TTL\s+(\d+)\s?')
-        zone_ttl = {zone: pattern.match(header).group(1)
-                    for zone, header in db.session.query(DnsHeader.zone_name, DnsHeader.header_content)}
+        zone_ttl = {}
+        for zone, header in db.session.query(DnsHeader.zone_name, DnsHeader.header_content):
+            if pattern.search(header) is None:
+                raise BadParam('Can get ttl of zone %s' % zone, msg_ch=u'无法获取zone的ttl' % zone)
+            zone_ttl[zone] = pattern.search(header).group(1)
 
         return zone_ttl
 
@@ -269,8 +272,7 @@ class ZoneRecordDal(object):
 
         ZoneRecordDal.check_dns_restriction(zone, domain_name, record_type)
         # 保证域名唯一
-        if DnsRecord.query.filter_by(domain_names=domain_name, record=record).first():
-            # 'already exists' 不能删，dnsutil里在用
+        if DnsRecord.query.filter_by(domain_name=domain_name, record=record).first():
             raise BadParam("Domain name has already exists which repells this new record.", msg_ch=u'记录已存在')
 
         other_record = DnsRecord.query.filter_by(domain_name=domain_name).first()

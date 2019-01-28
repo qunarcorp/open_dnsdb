@@ -67,8 +67,8 @@ def parse_zone_file(zone_name, zone_file, user, only_a=False):
     2、泛域名和非A/CNAME类型的域名保留在zone header中
     3、添加serial
     """
-    header_pattern = re.compile(r'TXT|MX|SOA|NS|\$ORIGIN|;|\)|^[\$@\*]|^[\s\d]+$')
-    delete_pattern = re.compile(r'^;.*$')
+    header_pattern = re.compile(r'\s(TXT|MX|SOA|NS)\s|\$ORIGIN|;|\)|^[\$@\*]|^[\s\d]+$')
+    delete_pattern = re.compile(r'^(;.*)?$')
     serial_pattern = re.compile(r'(\d+)(?=\s+; Serial)')
 
     is_add = True
@@ -107,8 +107,8 @@ def parse_zone_file(zone_name, zone_file, user, only_a=False):
             else:
                 ttl = int(parts[1])
 
-        if record_type != 'A' or record_type != 'CNAME':
-            continue
+        if record_type != 'A' and record_type != 'CNAME':
+            header += ' '.join(parts) + '\n'
         if only_a and record_type != "A":
             continue
         record_mapping.append(dict(domain_name=name,
@@ -206,6 +206,15 @@ def import_zone_records(zone_dir, zone_group, user):
         is_add, header, record_mapping = parse_zone_file(zone_name, os.path.join(zone_dir, zone_name), user)
         if not is_add:
             continue
+
+        origin = re.search(r'\$ORIGIN\s+([^\s]+)\s?', header)
+        if origin and origin.group(1).strip('.') != zone_name:
+            print(u'%s: zone文件名称和文件中"$ORIGIN"定义的zone不同，放弃添加该zone' % zone_name)
+            continue
+        ttl = re.search(r'\$TTL\s+(\d+)\s?', header)
+        if not ttl:
+            print(u'无法获取zone的ttl，放弃添加该zone' % zone_name)
+            continue
         with db.session.begin(subtransactions=True):
             db.session.add(DnsHeader(zone_name=zone_name, header_content=header))
             db.session.add(DnsSerial(zone_name=zone_name, zone_group=zone_group,
@@ -225,12 +234,21 @@ def import_view_records(zone_file, zone_group, user):
         '3000000026  ; Serial'
     """
     zone_name = zone_file.strip().split('/')[-1]
-    header, record_mapping = parse_zone_file(zone_name, zone_file, user, only_a=True)
+    is_add, header, record_mapping = parse_zone_file(zone_name, zone_file, user, only_a=True)
     with db.session.begin(subtransactions=True):
         db.session.add(DnsHeader(zone_name=zone_name, header_content=header))
         db.session.add(DnsSerial(zone_name=zone_name, zone_group=zone_group,
                                  serial_num=3000000000, update_serial_num=3000000000))
         db.session.bulk_insert_mappings(DnsRecord, record_mapping)
+
+
+@app.cli.command()
+@click.option('--zone', help='name of zone')
+def delete_zone(zone):
+    with db.session.begin(subtransactions=True):
+        DnsHeader.query.filter_by(zone_name=zone).delete()
+        DnsSerial.query.filter_by(zone_name=zone).delete()
+        DnsRecord.query.filter_by(zone_name=zone).delete()
 
 
 @app.cli.command()
