@@ -13,6 +13,9 @@ from oslo.config import cfg
 from dns_updater.utils.updater_util import DnsdbApi
 from dns_updater.utils.updater_util import send_alarm_email
 from dns_updater.utils.updater_util import backup_file
+from dns_updater.utils.updater_util import make_zone_file_from_dnsdb
+from dns_updater.utils.updater_util import checkzone
+from dns_updater.utils.updater_util import run_command_with_code
 
 from dnsdb_common.library.exception import UpdaterErr
 from dnsdb_common.library.log import getLogger
@@ -174,18 +177,39 @@ class UpdateConfThread(threading.Thread):
                 raise
             reload_conf()
 
+    def init_zone(self):
+        zone = self.kwargs['zone']
+        tmp_zonefile_path = make_zone_file_from_dnsdb(zone)
+
+        zonf_file = zone
+        if '.IN-ADDR.ARPA' in zone:
+            tmp = zone.replace('.IN-ADDR.ARPA', '').split('.')
+            tmp.reverse()
+            zonf_file = '.'.join(tmp) + '.zone'
+
+        checkzone(zone, tmp_zonefile_path)
+        print(CONF.bind_conf.zone_dir)
+        run_command_with_code('cp %s %s' % (tmp_zonefile_path, os.path.join(CONF.bind_conf.zone_dir, zonf_file)))
+
 
     def run(self):
         msg = ''
         is_success = True
         try:
+            if self.group_name != CONF.host_group:
+                raise UpdaterErr(u'Host %s group not match: local %s, param: %s' %
+                                 (CONF.host_ip, CONF.host_group, self.group_name))
             if self.update_type == 'named.conf':
                 self.update_named()
             elif self.update_type == 'acl':
                 self.update_acl()
+            elif self.update_type == 'zone':
+                self.init_zone()
+            else:
+                raise UpdaterErr('No worker for this type of update: %s' % self.update_type)
 
         except Exception as e:
-            send_alarm_email(u'更新文件失败\n主机: %s\n原因: %s' % (_get_local_hostname(), e))
+            send_alarm_email(u'更新文件失败\n主机: %s\n, 类型: %s, 原因: %s' % (_get_local_hostname(), self.update_type, e))
             log.exception(e)
             msg = str(e)
             is_success = False

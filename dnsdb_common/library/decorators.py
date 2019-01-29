@@ -130,10 +130,7 @@ def parse_params(param_meta=None, need_username=False):
             kwargs.update(params)
             if need_username:
                 kwargs['username'] = current_user.username
-            # kwargs.update({
-            #     'params': params,
-            #     'username': current_user.username
-            # })
+            log.info('func: %s, args: %s' % (func.__name__, kwargs))
             return func(*args, **kwargs)
 
         return _wrapper

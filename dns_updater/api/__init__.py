@@ -36,9 +36,5 @@ def update_named(group_name, group_conf_md5):
                dict(name='params', type=dict, required=True, nullable=False)])
 @resp_wrapper_json
 def update_conf(update_type, group_name, params):
-    if group_name != CONF.host_group:
-        return send_alarm_email(
-            u'Host %s group not match: local %s, param: %s' % (CONF.host_ip, CONF.host_group, group_name))
-    print(update_type, params)
     start_update_thread(update_type, group_name=group_name, **params)
     return

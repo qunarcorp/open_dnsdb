@@ -11,7 +11,7 @@ def _copy_named_files():
     zone_dir = ZONE_DIR
     tmp = os.path.join(TMP_DIR, 'var/named')
     make_dir(tmp)
-    if os.system("cp -f %s/* %s/var/named/ >/dev/null 2>&1" % (zone_dir, TMP_DIR)) != 0:
+    if os.system("cp -Rf %s/* %s/var/named/ >/dev/null 2>&1" % (zone_dir, TMP_DIR)) != 0:
         raise UpdaterErr("Failed to copy zone files to tmp_dir.")
     log.info("Copied named's files to %s.", TMP_DIR)
 
@@ -60,6 +60,7 @@ def _build_zonename_for_PTR_zone(zone):
 
 def handler():
     zone_list = DnsdbApi.get_update_zones(CONF.host_group)
+    log.info('zones to update: %s' % zone_list)
     for name in zone_list:
         zone_file_dict = {}
         try:
@@ -84,7 +85,7 @@ def handler():
             if DnsdbApi.can_reload():
                 reload_and_backup_zones(zone_file_dict)
                 DnsdbApi.update_zone_serial(name)
-                print('update_zone_serial')
+                log.info('update_zone_serial')
             return True
         except UpdaterErr as e:
             log.error(e.message)

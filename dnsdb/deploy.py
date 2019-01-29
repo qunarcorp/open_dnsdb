@@ -10,7 +10,6 @@ from oslo.config import cfg
 from dnsdb_common.dal import db
 from dnsdb_common.dal.operation_log import OperationLogDal
 from dnsdb_common.library.api import DnsUpdaterApi
-from dnsdb_common.library.email_util import send_alert_email
 from dnsdb_common.library.exception import DnsdbException
 from dnsdb_common.library.log import setup, getLogger
 
@@ -77,11 +76,26 @@ class DeployThread(threading.Thread):
             for host in hosts:
                 try:
                     result = DnsUpdaterApi(host_ip=host).notify_update(self.deploy_type, group_name,
-                                                                    deploy_id=self.job_id, acl_files=acl_files)
+                                                                       deploy_id=self.job_id, acl_files=acl_files)
                     log.info('notify %s to update %s success, %s' % (host, self.deploy_type, result))
                 except Exception as e:
                     log.error('notify %s to update %s failed, %s' % (host, self.deploy_type, e))
                     self.notify_failed.append(e)
+
+    def init_zone(self):
+        hosts = self.deploy_info.get('hosts', [])
+        if not hosts:
+            OperationLogDal.update_opration_log(self.job_id, {'op_result': 'ok'})
+        group_name = self.deploy_info['group']
+        zone = self.deploy_info['zone']
+        for host in hosts:
+            try:
+                result = DnsUpdaterApi(host_ip=host).notify_update(self.deploy_type, group_name,
+                                                                   deploy_id=self.job_id, zone=zone)
+                log.info('notify %s to update %s success, %s' % (host, self.deploy_type, result))
+            except Exception as e:
+                log.error('notify %s to update %s failed, %s' % (host, self.deploy_type, e))
+                self.notify_failed.append(e)
 
     def run(self):
         with self.app.app_context():
@@ -97,6 +111,8 @@ class DeployThread(threading.Thread):
                 self.update_named_conf()
             elif job.op_domain == 'acl':
                 self.update_acl()
+            elif job.op_domain == 'zone':
+                self.init_zone()
             if self.notify_failed:
                 pass
         with self.app.app_context():

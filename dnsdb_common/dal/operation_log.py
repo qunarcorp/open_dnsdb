@@ -101,7 +101,20 @@ class OperationLogDal(object):
         item = OperationLog.query.get(job_id)
         if not item:
             return item
-        data = dict(op_result='wait', op_after=json.dumps(dict(successed=[], failed={}, unfinished=[])))
+
+        op_info = json.loads(item.op_before)
+        op_domain = item.op_domain
+        unfinished = []
+        if op_domain == 'named.conf':
+            for group, info in op_info.iteritems():
+                unfinished.extend(info['hosts'])
+        elif op_domain == 'acl':
+            for group, hosts in op_info.get('hosts', {}).iteritems():
+                unfinished.extend(hosts)
+        elif op_domain == 'zone':
+            unfinished.extend(op_info.get('hosts', []))
+
+        data = dict(op_time=datetime.now(), op_result='wait', op_after=json.dumps(dict(successed=[], failed={}, unfinished=unfinished)))
         return OperationLogDal.update_opration_log(job_id, data)
 
     @staticmethod

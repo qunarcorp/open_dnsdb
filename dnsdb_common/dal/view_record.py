@@ -134,7 +134,8 @@ class ViewRecordDal(object):
                 continue
             zone_count.append({'zone': item[0], 'count': item[1]})
         result = sorted(zone_count, key=lambda x: x['count'], reverse=True)[:5]
-        result.append({'zone': VIEW_ZONE, 'count': ViewDomainNames.query.count()})
+        if VIEW_ZONE:
+            result.append({'zone': VIEW_ZONE, 'count': ViewDomainNames.query.count()})
         return result
 
 

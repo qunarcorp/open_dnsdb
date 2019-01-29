@@ -130,9 +130,9 @@
           value: 0,
           label: '反解'
         }, {
-          value: 1,
-          label: '机房'
-        }, {
+        //   value: 1,
+        //   label: '机房'
+        // }, {
           value: 2,
           label: '普通'
         }],

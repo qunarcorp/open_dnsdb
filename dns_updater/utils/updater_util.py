@@ -18,7 +18,7 @@ from dnsdb_common.library.exception import UpdaterErr
 from dnsdb_common.library.log import getLogger
 
 try:
-    long        # Python 2
+    long  # Python 2
 except NameError:
     long = int  # Python 3
 
@@ -167,10 +167,10 @@ def run_command_with_code(cmd, redirect_output=True,
     else:
         stdout = None
 
-    proc = sp.Popen(cmd, stdout=stdout, stderr=sp.PIPE)
+    proc = sp.Popen(split(cmd), stdout=stdout, stderr=sp.PIPE)
     output = proc.communicate()[0]
     if check_exit_code and proc.returncode != 0:
-        log.error('Command "%s" failed.\n%s', ' '.join(cmd), output)
+        log.error('Command "%s" failed.\n%s', cmd, output)
     return output, proc.returncode
 
 
@@ -201,8 +201,7 @@ def make_zone_file(zone, filename, serial, header, record_list):
     try:
         with open(filename, 'w') as f:
             f.writelines(header)
-        run_command_with_code(
-            split('sed -i "" "s/pre_serial/%s/" %s' % (str(serial), filename)))
+        run_command_with_code('sed -i "" "s/pre_serial/%s/" %s' % (str(serial), filename))
 
         with open(filename, 'a') as f:
             for item in record_list:

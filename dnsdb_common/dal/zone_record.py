@@ -15,6 +15,7 @@ from . import db
 from .models import DnsHeader
 from .models import DnsRecord
 from .models import DnsSerial
+from .models import DnsZoneConf
 from .models import IpPool
 from .models import ViewDomainNameState
 from .models import ViewIsps
@@ -70,8 +71,13 @@ class ZoneRecordDal(object):
             raise BadParam('not header for zone: %s' % zone_name)
         serial = DnsSerial.query.filter_by(zone_name=zone_name).first()
         if not serial:
-            raise BadParam('not serial for zone: %s' % zone_name)
-        return dict(header=header.header_content, serial_num=serial.serial_num)
+            conf = DnsZoneConf.query.filter_by(zone_name=zone_name).first()
+            if not conf or conf.zone_type != 0:
+                raise BadParam('not serial for zone: %s' % zone_name)
+            serial_num = 3000000000
+        else:
+            serial_num = serial.serial_num
+        return dict(header=header.header_content, serial_num=serial_num)
 
     @staticmethod
     def get_zone_need_update(group_name):

@@ -14,6 +14,7 @@ from .models import DnsHostGroup
 from .models import DnsNamedConf
 from .models import DnsSerial
 from .models import DnsZoneConf
+from .models import DnsRecord
 from ..library.exception import BadParam, DnsdbException
 from ..library.utils import is_valid_ip_format, is_valid_domain_name
 from dnsdb.deploy import start_deploy_job
@@ -27,6 +28,11 @@ def start_named_deploy(username, group_md5_conf):
     job_id = start_deploy_job(username, group_md5_conf, 'named.conf', unfinished)
     return job_id
 
+def start_zone_header_deploy(user, group, zone_name, conf_type='zone'):
+    hosts = HostGroupConfDal.get_host_by_group(group)
+    deploy_info = dict(hosts=hosts, group=group, zone=zone_name)
+
+    return start_deploy_job(user, deploy_info, conf_type, hosts)
 
 class HostGroupConfDal(object):
     @staticmethod
@@ -233,43 +239,46 @@ class HostGroupConfDal(object):
         return group_md5_dict
 
     @staticmethod
-    @commit_on_success
     def add_named_zone(zone_name, zone_type, conf_dict, add_header, username):
         conf = DnsZoneConf.query.filter_by(zone_name=zone_name).first()
         if conf:
             raise BadParam('zone %s exists' % zone_name)
 
         zone_group = conf_dict.keys()
-        master_group = [group for group in zone_group if group.lower().endswith('master')]
+        master_groups = [group for group in zone_group if group.lower().endswith('master')]
+        if len(master_groups) > 1 or not master_groups:
+            raise BadParam('zone must and can only exist in one Master group', msg_ch=u'zone能且只能存在于一组master主机中')
+        master_group = master_groups[0]
+        with db.session.begin(subtransactions=True):
+            for group, zone_conf in conf_dict.iteritems():
+                HostGroupConfDal.check_zone_conf(group, zone_name, zone_conf)
+                db.session.add(DnsZoneConf(zone_name=zone_name,
+                                           zone_conf=zone_conf,
+                                           zone_type=zone_type,
+                                           zone_group=group))
 
-        for group, zone_conf in conf_dict.iteritems():
-            HostGroupConfDal.check_zone_conf(group, zone_name, zone_conf)
-            db.session.add(DnsZoneConf(zone_name=zone_name,
-                                       zone_conf=zone_conf,
-                                       zone_type=zone_type,
-                                       zone_group=group))
+            group_md5_dict = HostGroupConfDal.update_group_conf_md5(conf_dict.keys())
 
-        group_md5_dict = HostGroupConfDal.update_group_conf_md5(conf_dict.keys())
+            if add_header:
+                file_name = '../etc/template/zone_header'
+                # add template header
+                with open(file_name) as f:
+                    header = f.read()
+                    if len(header) == 0:
+                        raise DnsdbException('Can\'t find template header: %s' % file_name)
+                    header = header.replace('zone_name', zone_name)
+                    header = DnsHeader(zone_name=zone_name, header_content=header)
+                    db.session.add(header)
 
-        if add_header:
-            file_name = '../etc/template/zone_header'
-            # add template header
-            with open(file_name) as f:
-                header = f.read()
-                if len(header) == 0:
-                    raise DnsdbException('Can\'t find template header: %s' % file_name)
-                header = header.replace('zone_name', zone_name)
-                header = DnsHeader(zone_name=zone_name, header_content=header)
-                db.session.add(header)
+                if zone_type != 0:
+                    # add zone serial
+                    serial = DnsSerial(zone_name=zone_name,
+                                       serial_num=3000000000,
+                                       update_serial_num=3000000000,
+                                       zone_group=master_groups[0])
+                    db.session.add(serial)
 
-            if zone_type != 0:
-                # add zone serial
-                serial = DnsSerial(zone_name=zone_name,
-                                   serial_num=3000000000,
-                                   update_serial_num=3000000000,
-                                   zone_group=group)
-                db.session.add(serial)
-
+        start_zone_header_deploy(username, master_group, zone_name)
         job_id = start_named_deploy(username, group_md5_dict)
         return job_id
 
@@ -320,9 +329,10 @@ class HostGroupConfDal(object):
     def delete_named_zone(zone, username):
         group_need_update = {item.zone_group: item.zone_conf for item in DnsZoneConf.query.filter_by(zone_name=zone)}
 
-        DnsZoneConf.query.filter_by(zone_name=zone).delete()
+        DnsRecord.query.filter_by(zone_name=zone).delete()
         DnsSerial.query.filter_by(zone_name=zone).delete()
         DnsHeader.query.filter_by(zone_name=zone).delete()
+        DnsZoneConf.query.filter_by(zone_name=zone).delete()
 
         group_md5_dict = HostGroupConfDal.update_group_conf_md5(group_need_update.keys())
         return group_need_update, start_named_deploy(username, group_md5_dict)

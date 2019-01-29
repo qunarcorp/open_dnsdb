@@ -20,24 +20,25 @@ CONF = cfg.CONF
 
 
 def send_email(subject, content, sender=None, receivers=None):
-    if content is None:
-        content = ""
-    msg = MIMEText(content, 'plain', 'utf-8')
-    if sender is None:
-        sender = CONF.MAIL.from_addr
-    elif isinstance(sender, basestring):
-        raise TypeError('sender should be str type.')
-    if receivers is None:
-        receivers = CONF.MAIL.info_list
-    elif isinstance(receivers, basestring):
-        raise TypeError('Receivers should be str type.')
-    to_list = receivers.split(';')
-
-    msg['Subject'] = Header(subject, 'utf-8')
-    msg['From'] = Header(sender, 'utf-8')
-    msg['To'] = Header(receivers, 'utf-8')
     s = smtplib.SMTP()
     try:
+        if content is None:
+            content = ""
+        msg = MIMEText(content, 'plain', 'utf-8')
+        if sender is None:
+            sender = CONF.MAIL.from_addr
+        elif not isinstance(sender, basestring):
+            raise TypeError('sender should be str type.')
+        if receivers is None:
+            receivers = CONF.MAIL.info_list
+        elif not isinstance(receivers, basestring):
+            raise TypeError('Receivers should be str type.')
+        to_list = receivers.split(';')
+
+        msg['Subject'] = Header(subject, 'utf-8')
+        msg['From'] = Header(sender, 'utf-8')
+        msg['To'] = Header(receivers, 'utf-8')
+        s = smtplib.SMTP()
         s.connect(CONF.MAIL.server, CONF.MAIL.port)
         s.sendmail(sender, to_list, msg.as_string())
     except Exception as e:
