@@ -30,6 +30,8 @@ def _is_valide_region(region):
 
 
 def _validate_args(subnet, region, colo):
+    if '/' not in subnet:
+        raise BadParam('Invalid subnet.', msg_ch=u'请使用cidr格式的网段')
     try:
         sub = IP(subnet)
     except:
@@ -120,4 +122,4 @@ def get_region_by_ip(ip):
 @parse_params([dict(name='region', type=str, required=True, nullable=False)])
 @resp_wrapper_json
 def get_region_by_name(region):
-    return [SubnetIpDal.get_region_by_name(region)]
+    return SubnetIpDal.get_region_by_name_like(region)

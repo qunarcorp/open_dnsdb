@@ -38,6 +38,12 @@ class SubnetIpDal(object):
         return record.json_serialize()
 
     @staticmethod
+    def get_region_by_name_like(region):
+        region = '%{}%'.format(region)
+        records = Subnets.query.filter(Subnets.region_name.like(region))
+        return [record.json_serialize() for record in records]
+
+    @staticmethod
     def is_intranet_region(region):
         record = Subnets.query.filter_by(region_name=region).first()
         if not record:

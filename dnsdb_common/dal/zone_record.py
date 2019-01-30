@@ -62,7 +62,7 @@ class ZoneRecordDal(object):
             best_match = domain.split('.', index)[-1]
             if best_match in zones:
                 return best_match
-        return None
+        raise BadParam('No zone for domain: %s' % domain, msg_ch=u'没有适配的zone')
 
     @staticmethod
     def get_zone_header(zone_name):
@@ -177,7 +177,7 @@ class ZoneRecordDal(object):
         # 是否存在MX TXT记录
         zone_header = ZoneRecordDal.get_zone_header(zone)['header']
         pattern = r'\s{0}[\s\d]+IN\s+MX|\s{0}[\s\d]+IN\s+TXT'.format(domain_name.replace('.' + zone, ''))
-        if re.search(pattern, zone_header.header_content):
+        if re.search(pattern, zone_header):
             raise BadParam('%s has mx or txt record in zone: %s' % (domain_name, zone))
 
     @staticmethod
@@ -189,7 +189,7 @@ class ZoneRecordDal(object):
         if record_type == 'A' and DnsRecord.query.filter_by(domain_name=domain_name, record_type='CNAME').first():
             raise BadParam('%s has CNAME record.' % domain_name, msg_ch=u'域名已有CNAME记录')
         if record_type == 'CNAME':
-            if DnsRecord.query.filter(domain_name=domain_name).first():
+            if DnsRecord.query.filter_by(domain_name=domain_name).first():
                 raise BadParam('%s has %s record.' % domain_name, msg_ch=u'域名只能有一条CNAME记录')
 
             ZoneRecordDal.has_no_mx_txt_record(zone, domain_name)

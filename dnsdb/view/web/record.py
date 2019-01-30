@@ -55,7 +55,7 @@ def _validate_args(domain_name, param_dict):
         if record_type == 'CNAME':
             if domain_name == param_dict['record']:
                 raise BadParam("Self-CNAME is not allowed.", msg_ch=u'域名和CNAME不能相同')
-            if check_record and is_valid_cname(record):
+            if check_record and not is_valid_cname(record):
                 raise BadParam('Invalid CNAME record', msg_ch=u'CNAME记录的zone必须在DNSDB管理中')
         elif record_type == 'A':
             is_valid_ip_format(record)

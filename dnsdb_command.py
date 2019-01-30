@@ -252,14 +252,16 @@ def delete_zone(zone):
 
 
 @app.cli.command()
-@click.option('--group', default='subnet')
-@click.option('--colos')
-@click.option('--user', default='admin')
+@click.option('--colos', help=u'机房，以逗号隔开 "bj1,bj2"')
+@click.option('--group', default='subnet', help=u'机房所属配置组, 默认 subnet（用于ip管理）')
+@click.option('--user', default='admin', help=u'用户名, 默认 admin')
 def add_colo_config(colos, user, group):
     if colos is None:
         print(u'缺少必要的参数: --colos')
+        return
     colos = colos.split(',')
-    colo_mapping = [dict(colo_name=item, colo_group=group, create_user=user) for item in colos]
+    exist = [item.colo_name for item in DnsColo.query.filter_by(colo_group=group)]
+    colo_mapping = [dict(colo_name=item, colo_group=group, create_user=user) for item in set(colos) - set(exist)]
     with db.session.begin(subtransactions=True):
         db.session.bulk_insert_mappings(DnsColo, colo_mapping)
 
