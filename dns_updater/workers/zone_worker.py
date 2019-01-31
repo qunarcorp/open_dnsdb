@@ -2,6 +2,7 @@
 
 from __future__ import print_function
 from dns_updater.utils.updater_util import *
+import time
 
 TMP_DIR = CONF.etc.tmp_dir
 ZONE_DIR = CONF.bind_conf.zone_dir
@@ -71,7 +72,7 @@ def handler():
 
             tmp_zonefile_path = make_zone_file_from_dnsdb(name)
             if not is_need_update_zone(tmp_zonefile_path, current_zonefile_path):
-                return
+                continue
             checkzone(name, tmp_zonefile_path)
             zone_file_dict[name] = {
                 'src': tmp_zonefile_path,
@@ -86,8 +87,10 @@ def handler():
                 reload_and_backup_zones(zone_file_dict)
                 DnsdbApi.update_zone_serial(name)
                 log.info('update_zone_serial')
-            return True
+                time.sleep(1)
         except UpdaterErr as e:
             log.error(e.message)
+            send_alarm_email(u'zone %s 更新失败\n原因: %s' % (name, e.message))
         except Exception as e:
             log.exception(e)
+            send_alarm_email(u'zone %s 更新失败\n原因: %s' % (name, e))

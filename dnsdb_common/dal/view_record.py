@@ -218,7 +218,7 @@ class ViewRecordDal(object):
 
         return {
             'domain_name': domain,
-            'is_migrate': ViewRecordDal.is_migrate_domain(domain),
+            'is_migrate': ViewRecordDal.is_migrate_domain(view_domain),
             'cnames': cdn_conf,
             'rooms': room_confs
         }
@@ -435,7 +435,7 @@ class ViewRecordDal(object):
                 ))
             # 新增域名 更新dnsmaster2
             ViewRecordDal.increase_serial_num(VIEW_ZONE)
-            ViewRecordDal.increase_serial_num(cname_zone)
+            # ViewRecordDal.increase_serial_num(cname_zone)
 
     @staticmethod
     def update_view_domain(username, domain_name, cnames, rooms):
@@ -577,16 +577,16 @@ class ViewRecordDal(object):
     @staticmethod
     @commit_on_success
     def delete_view_domain(domain_name):
-        session = db.session
-        record = DnsRecord.query.filter_by(record=domain_name).all()
-        if len(record):
-            raise BadParam('view domain has cname record: %s' % domain_name,
-                           msg_ch=u'请先删除域名的cname记录')
+        need_update = [VIEW_ZONE]
 
-        zone = ViewRecordDal.get_view_domain_zone(domain_name)
-        session.query(ViewRecords).filter_by(domain_name=domain_name).delete()
-        session.query(ViewDomainNameState).filter_by(domain_name=domain_name).delete()
-        session.query(ViewDomainNames).filter_by(domain_name=domain_name).delete()
+        need_update.append(ViewRecordDal.get_view_domain_zone(domain_name))
+        ViewRecords.query.filter_by(domain_name=domain_name).delete()
+        ViewDomainNameState.query.filter_by(domain_name=domain_name).delete()
+        ViewDomainNames.query.filter_by(cname=domain_name).delete()
 
-        for update_zone in [zone, VIEW_ZONE]:
+        record = DnsRecord.query.filter_by(record=domain_name).first()
+        need_update.append(record.zone_name)
+        db.session.delete(record)
+
+        for update_zone in need_update:
             ViewRecordDal.increase_serial_num(update_zone)
