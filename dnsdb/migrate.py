@@ -5,7 +5,7 @@ import json
 from oslo.config import cfg
 
 from dnsdb import get_flask_app
-from dnsdb.constant.constant import ZONE_MAP
+from dnsdb.constant.constant import NORMAL_TO_CNAME
 from dnsdb_common.dal.view_migrate import MigrateDal
 from dnsdb_common.library.log import setup, getLogger
 from dnsdb_common.library.exception import BadParam
@@ -97,4 +97,4 @@ class MigrateThread(threading.Thread):
                     MigrateDal.update_history_by_id(self.migrate_history_id, state='error')
                     return
             # 更新serial
-            MigrateDal.increase_serial_num(ZONE_MAP.keys())
+            MigrateDal.increase_serial_num(NORMAL_TO_CNAME.values())

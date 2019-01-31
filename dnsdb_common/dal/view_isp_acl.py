@@ -59,7 +59,7 @@ class ViewIspAclDal(object):
 
     @staticmethod
     def list_acl_isp():
-        return {item['acl_name']: item['name_in_chinese'] for item in ViewIspAclDal.list_isp() if item['acl_name']}
+        return {item['acl_name']: item['name_in_chinese'] for item in ViewIspAclDal.list_isp() if item['acl_file']}
 
     @staticmethod
     def list_acl_subnet_by_ip(ip):
@@ -161,9 +161,9 @@ class ViewIspAclDal(object):
             acl_subnet.update_user = username
             db.session.add(acl_subnet)
 
-            # 更新acl
-            start_acl_deploy_job(username, [from_acl, to_acl])
-            acl_isp = ViewIspAclDal.list_acl_isp()
-            op_after = {'from_isp': acl_isp[from_acl], 'to_isp': acl_isp[to_acl],
-                        'subnet': acl_subnet.subnet, 'is_recover': to_acl == acl_subnet.origin_acl}
-            return op_after
+        # 更新acl
+        start_acl_deploy_job(username, [from_acl, to_acl])
+        acl_isp = ViewIspAclDal.list_acl_isp()
+        op_after = {'from_isp': acl_isp[from_acl], 'to_isp': acl_isp[to_acl],
+                    'subnet': acl_subnet.subnet, 'is_recover': to_acl == acl_subnet.origin_acl}
+        return op_after

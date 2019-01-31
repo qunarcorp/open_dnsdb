@@ -20,7 +20,7 @@ from ..library.IPy import IP
 from ..library.exception import BadParam
 from ..library.log import setup, getLogger
 from ..library.utils import is_valid_domain_name, is_valid_ip_format
-from dnsdb.constant.constant import ZONE_MAP, NORMAL_TO_VIEW, VIEW_ZONE
+from dnsdb.constant.constant import NORMAL_TO_CNAME, NORMAL_TO_VIEW, VIEW_ZONE
 
 setup("dnsdb")
 log = getLogger(__name__)
@@ -104,18 +104,16 @@ def _need_reload_zone(active_record, rooms):
 class ViewRecordDal(object):
     @staticmethod
     def create_view_domain(domain_name):
-        allow_zone = NORMAL_TO_VIEW.keys()
-        allow_zone.extend(NORMAL_TO_VIEW.values())
-
         if domain_name.endswith(VIEW_ZONE):
             for k, v in NORMAL_TO_VIEW.iteritems():
                 if domain_name.endswith(v):
                     return domain_name, k
-            raise BadParam('invalid domain', msg_ch=u'可用域名后缀: %s' % allow_zone)
+            raise BadParam('invalid domain', msg_ch=u'可用view域名后缀: %s' % NORMAL_TO_VIEW.values())
 
         normal_zone = ViewRecordDal.select_zone(domain_name)
         if normal_zone not in NORMAL_TO_VIEW:
-            raise BadParam('invalid domain: %s' % domain_name, msg_ch=u'可用域名后缀: %s' % allow_zone)
+            raise BadParam('invalid domain: %s' % domain_name,
+                           msg_ch=u'%s 不是可用普通域名后缀: %s' % (normal_zone, NORMAL_TO_VIEW.keys()))
         return domain_name.replace(normal_zone, NORMAL_TO_VIEW[normal_zone]), normal_zone
 
     @staticmethod
@@ -127,7 +125,7 @@ class ViewRecordDal(object):
     @staticmethod
     def zone_domain_count():
         zone_count = []
-        exclude_zones = ZONE_MAP.values()
+        exclude_zones = NORMAL_TO_CNAME.values()
         for item in db.session.query(DnsRecord.zone_name,
                                      func.count(DnsRecord.zone_name)).group_by(DnsRecord.zone_name):
             if item[0] in exclude_zones:
@@ -392,8 +390,33 @@ class ViewRecordDal(object):
         if ViewRecordDal.get_view_domain_name(domain_name):
             raise BadParam('Domain already existed', msg_ch=u'域名已经存在')
 
+        for item in NORMAL_TO_VIEW.keys():
+            if domain_name.endswith(item):
+                break
+        else:
+            raise BadParam('Invalid domain', msg_ch=u'可用的域名后缀: %s' % NORMAL_TO_VIEW.keys())
         view_domain, normal_zone = ViewRecordDal.create_view_domain(domain_name)
-        cname_zone = ZONE_MAP[normal_zone]
+        cname_zone = NORMAL_TO_CNAME[normal_zone]
+
+        # 检查普通域名中有domain_name记录
+        # 如果没有，则添加CNAME记录
+        # 如果有，A记录的话不允许添加域名，CNAME记录看下是不是CNAME到view_doamin
+        normal_records = DnsRecord.query.filter_by(domain_name=domain_name).all()
+        if normal_records:
+            if len(normal_records) > 1 or normal_records[0].record_type == 'A':
+                raise BadParam('Doamin %s already exist A record' % domain_name,
+                               msg_ch=u'域名已经存在A记录，不能用作view域名')
+            record = normal_records[0].record
+            if record != view_domain:
+                raise BadParam('Doamin %s already exist CNAME record: %s' % (domain_name, record),
+                               msg_ch=u'域名已经存在CNAME记录: %s，不能用作view域名' % record)
+        else:
+            with db.session.begin(subtransactions=True):
+                insert_record = DnsRecord(domain_name=domain_name, record=view_domain,
+                                          zone_name=normal_zone, update_user=username,
+                                          record_type='CNAME', ttl=CONF.view.cname_ttl)
+                db.session.add(insert_record)
+                ViewRecordDal.increase_serial_num(normal_zone)
 
         with db.session.begin(subtransactions=True):
             db.session.add(ViewDomainNames(

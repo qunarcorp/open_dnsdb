@@ -9,9 +9,6 @@ RE_PATTERN = {
     'password': r'^(?=[\s\S]{6,9}$)(?=[\s\S]*[A-Z])(?=[\s\S]*[a-z])(?=[\s\S]*[0-9]).*'
 }
 
-ZONE_MAP = {
-}
-NORMAL_TO_VIEW = {
-}
-
+NORMAL_TO_CNAME = CONF.view.normal_cname
+NORMAL_TO_VIEW = CONF.view.normal_view
 VIEW_ZONE = CONF.view.view_zone

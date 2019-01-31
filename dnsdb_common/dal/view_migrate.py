@@ -6,6 +6,7 @@ from datetime import datetime
 
 import sqlalchemy
 
+from dnsdb.constant.constant import NORMAL_TO_CNAME
 from .models import DnsSerial
 from .models import ViewDomainNameState
 from .models import ViewIspStatus
@@ -250,6 +251,7 @@ class MigrateDal(object):
             for item in q:
                 item.enabled_rooms = item.origin_enabled_rooms
                 item.state = item.origin_state
+            MigrateDal.increase_serial_num(NORMAL_TO_CNAME.values())
 
     @staticmethod
     def get_view_migrate_detail(migrate_id, domain, page, page_size):

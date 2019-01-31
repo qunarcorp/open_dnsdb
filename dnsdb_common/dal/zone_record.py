@@ -9,7 +9,7 @@ from hashlib import md5
 from oslo.config import cfg
 from ping import quiet_ping
 
-from dnsdb.constant.constant import ZONE_MAP, VIEW_ZONE, NORMAL_TO_VIEW
+from dnsdb.constant.constant import NORMAL_TO_CNAME, VIEW_ZONE, NORMAL_TO_VIEW
 from . import commit_on_success
 from . import db
 from .models import DnsHeader
@@ -28,7 +28,7 @@ log = getLogger(__name__)
 CONF = cfg.CONF
 
 
-VIEW_TO_CNAME = {NORMAL_TO_VIEW[zone]: cname_zone for zone, cname_zone in ZONE_MAP.iteritems()}
+VIEW_TO_CNAME = {NORMAL_TO_VIEW[zone]: cname_zone for zone, cname_zone in NORMAL_TO_CNAME.iteritems()}
 
 def _make_glbs_cname(domain, abbr):
     for zone, cname_zone in VIEW_TO_CNAME.iteritems():
@@ -157,7 +157,7 @@ class ZoneRecordDal(object):
         isp_map = {item.name_in_english: item.abbreviation for item in ViewIsps.query.all()}
         if zone_name == VIEW_ZONE:
             return ZoneRecordDal._get_records_of_view_zone(isp_map)
-        elif zone_name in ZONE_MAP.values():
+        elif zone_name in NORMAL_TO_CNAME.values():
             return ZoneRecordDal._get_records_of_view_domain(zone_name, isp_map)
         else:
             return ZoneRecordDal._get_records_of_ordinary_zone(zone_name)

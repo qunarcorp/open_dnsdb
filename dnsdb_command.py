@@ -239,7 +239,8 @@ def import_view_records(zone_file, zone_group, user):
         db.session.add(DnsHeader(zone_name=zone_name, header_content=header))
         db.session.add(DnsSerial(zone_name=zone_name, zone_group=zone_group,
                                  serial_num=3000000000, update_serial_num=3000000000))
-        db.session.bulk_insert_mappings(DnsRecord, record_mapping)
+        if record_mapping:
+            db.session.bulk_insert_mappings(DnsRecord, record_mapping)
 
 
 @app.cli.command()
@@ -270,17 +271,13 @@ def add_colo_config(colos, user, group):
 @click.option('--acl_dir', help='acl file')
 @click.option('--user', help='user name', default='admin')
 def import_acl_subnet(acl_dir, user, add_overlap=True):
-    """
-    :param acl_dir: dir of acl file, please make sure that the acl_names in this file has already in the database
-    :param user
-    :return:
-    """
+    if not acl_dir:
+        print(u'缺少必要的参数: --acl_dir')
+        return
 
     isp_config = [
-        dict(name_in_english='chinanet', abbreviation='ct',
-             name_in_chinese=u'中国电信', acl_name='CHINANET', acl_file='CHINANET.acl', username=user),
-        dict(name_in_english='unicom', abbreviation='cu',
-             name_in_chinese=u'中国联通', acl_name='UNICOM', acl_file='UNICOM.acl', username=user)
+        # dict(name_in_english='chinanet', abbreviation='ct',
+        #      name_in_chinese=u'中国电信', acl_name='CHINANET', acl_file='CHINANET.acl', username=user)
     ]
 
     if isp_config:
@@ -288,6 +285,7 @@ def import_acl_subnet(acl_dir, user, add_overlap=True):
             db.session.bulk_insert_mappings(ViewIsps, isp_config)
         print('add isp conf success')
 
+    has_effect = False
     overlap = {}
     for item in ViewIsps.query.all():
         acl_file = item.acl_file
@@ -299,6 +297,7 @@ def import_acl_subnet(acl_dir, user, add_overlap=True):
             continue
         if ViewAclSubnet.query.filter_by(origin_acl=acl_name).first():
             print('There already have subnet for %s in database' % acl_name)
+            continue
 
         overlap_subnets, subnets = parse_acl_file(acl_path)
         if overlap_subnets:
@@ -318,7 +317,12 @@ def import_acl_subnet(acl_dir, user, add_overlap=True):
             ))
         with db.session.begin(subtransactions=True):
             db.session.bulk_insert_mappings(ViewAclSubnet, subnet_mapping)
+        print('Import acl_file %s success' % acl_file)
+        has_effect = True
 
     if overlap:
         print('There are overlap_subnets in files:'.format(overlap.keys()))
         print(json.dumps(overlap, indent=4))
+
+    if not has_effect:
+        print('Import no acl file.')

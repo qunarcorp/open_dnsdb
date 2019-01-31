@@ -41,7 +41,9 @@ CONF.register_opts([
 CONF.register_opts([
     cfg.StrOpt('acl_groups'),
     cfg.IntOpt('cname_ttl'),
-    cfg.StrOpt('view_zone')
+    cfg.StrOpt('view_zone'),
+    cfg.DictOpt('normal_view'),
+    cfg.DictOpt('normal_cname'),
 ], 'view')
 
 CONF.register_opts([
