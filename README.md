@@ -59,7 +59,7 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
 
 
 ## 安装手册
-* 环境 Python:2.7.13  pip:18.1
+* 环境 Python:3.6.2  pip:19.0.3
 * 安装virtualenv: pip install virtualenv
 * 项目克隆
 * 切换到项目目录: cd open_dnsdb 
@@ -91,3 +91,7 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
 	* 启动: supervisord -c /etc/supervisord.conf
 	* 查看是否启动成功: ps aux | grep supervisord
 	* supervisorctl -c /etc/supervisord.conf
+
+## ChangeLog
+
+* v0.2   升级python版本，仅支持3.6+  (2019-03-08)
