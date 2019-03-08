@@ -6,8 +6,8 @@ import re
 import tempfile
 from hashlib import md5
 
-from oslo.config import cfg
-from ping import quiet_ping
+from multiping import multi_ping
+from oslo_config import cfg
 
 from dnsdb.constant.constant import NORMAL_TO_CNAME, VIEW_ZONE, NORMAL_TO_VIEW
 from . import commit_on_success
@@ -27,11 +27,11 @@ log = getLogger(__name__)
 
 CONF = cfg.CONF
 
+VIEW_TO_CNAME = {NORMAL_TO_VIEW[zone]: cname_zone for zone, cname_zone in NORMAL_TO_CNAME.items()}
 
-VIEW_TO_CNAME = {NORMAL_TO_VIEW[zone]: cname_zone for zone, cname_zone in NORMAL_TO_CNAME.iteritems()}
 
 def _make_glbs_cname(domain, abbr):
-    for zone, cname_zone in VIEW_TO_CNAME.iteritems():
+    for zone, cname_zone in VIEW_TO_CNAME.items():
         if domain.endswith('.' + zone):
             return '%s.%s.%s' % (domain.replace('.' + zone, ''), abbr, cname_zone)
     raise BadParam('Domain name format wrong: %s' % domain)
@@ -94,7 +94,7 @@ class ZoneRecordDal(object):
                    order_by(DnsRecord.domain_name, DnsRecord.record).all())
         res = {isp: [] for isp in isp_map.keys()}
         for record in records:
-            for isp in isp_map.iterkeys():
+            for isp in isp_map.keys():
                 res[isp].append({"name": record.domain_name, "record": record.record,
                                  "type": record.record_type, "ttl": record.ttl})
 
@@ -122,15 +122,15 @@ class ZoneRecordDal(object):
 
         active_records = []
         for record in records:
-            if record.record_type != 'A' and record.record_type != 'CNAME':
-                raise BadParam('ViewRecord type error: only [A, CNAME] allow.')
+            if record.record_type not in ('A', 'AAAA', 'CNAME'):
+                raise BadParam('ViewRecord type error: only [A, AAAA, CNAME] allow.')
 
             states = merge_states[record.domain_name]
             for state in states:
                 if state.state == 'disabled':
                     continue
                 # It's an A record and state record indicates that the A record is being used.
-                if state.state == 'A' and record.record_type == 'A' and record.property in state.enabled_rooms:
+                if state.state == 'A' and record.record_type in ('A', 'AAAA') and record.property in state.enabled_rooms:
                     active_records.append({"name": _make_glbs_cname(state.domain_name, isp_map[state.isp]),
                                            "record": record.record, "type": record.record_type, "ttl": record.ttl})
                 # It's a CNAME record and state record says the CNAME the record is in use.
@@ -186,8 +186,9 @@ class ZoneRecordDal(object):
        1  有TXT/MX/A/CNAME 任意一种记录，都不允许添加cname
        2  有cname记录不允许添加a记录
        """
-        if record_type == 'A' and DnsRecord.query.filter_by(domain_name=domain_name, record_type='CNAME').first():
-            raise BadParam('%s has CNAME record.' % domain_name, msg_ch=u'域名已有CNAME记录')
+        if record_type == 'A' or record_type == 'AAAA':
+            if DnsRecord.query.filter_by(domain_name=domain_name, record_type='CNAME').first():
+                raise BadParam('%s has CNAME record.' % domain_name, msg_ch=u'域名已有CNAME记录')
         if record_type == 'CNAME':
             if DnsRecord.query.filter_by(domain_name=domain_name).first():
                 raise BadParam('%s has %s record.' % domain_name, msg_ch=u'域名只能有一条CNAME记录')
@@ -255,7 +256,7 @@ class ZoneRecordDal(object):
     def update_zone_header(zone_name, header_content):
         ZoneRecordDal.check_zone_header(zone_name, header_content)
         old_header = DnsHeader.query.filter_by(zone_name=zone_name).first().header_content
-        if md5(header_content).hexdigest() == md5(old_header).hexdigest():
+        if md5(header_content.encode('utf-8')).hexdigest() == md5(old_header.encode('utf-8')).hexdigest():
             raise BadParam('No change for this header: %s' % zone_name, msg_ch=u'内容没有变化')
 
         # 更新数据库中的header
@@ -307,25 +308,29 @@ class ZoneRecordDal(object):
 
         for item in records:
             ip = item.fixed_ip
-            # By sending 8 icmp packets with 64 bytes to this ip within 0.1 second,
-            # we can probably make sure if an ip is alive.
-            # If this ip does not answer any pings in 0.2 second, it will be presumed to be unused.
-            if CONF.etc.env != 'dev' and quiet_ping(ip, 0.1, 8, 64)[0] != 100:
-                IpPool.query.filter_by(fixed_ip=ip).update({'allocated': False})
-                log.error("%s should have been set allocated=False since it is ping-able." % ip)
-                continue
+            if CONF.etc.env != 'dev':
+                responses, no_responses = multi_ping([ip], timeout=10, retry=2,
+                                                     ignore_lookup_errors=True)
+                # 如果ping成功，那么ip不可用于自动分配
+                if responses:
+                    IpPool.query.filter_by(fixed_ip=ip).update({'allocated': False})
+                    log.error("%s should have been set allocated=False since it is ping-able." % ip)
+                    continue
             with db.session.begin(subtransactions=True):
                 try:
-                    iprecord = IpPool.query.filter_by(fixed_ip=ip).with_for_update(nowait=True, of=IpPool)
+                    iprecord = IpPool.query.filter_by(fixed_ip=ip).with_for_update(nowait=True, of=IpPool).first()
                 except Exception:
                     log.error("%s has been locked by other process" % ip)
                     continue
                 if DnsRecord.query.filter_by(record=ip).first():
                     continue
 
+                record_type = 'A'
+                if iprecord.is_ipv6:
+                    record_type = 'AAAA'
                 insert_record = DnsRecord(domain_name=domain_name, record=ip,
                                           zone_name=zone, update_user=username,
-                                          record_type='A')
+                                          record_type=record_type)
                 db.session.add(insert_record)
 
                 return ZoneRecordDal.increase_serial_num(zone)
@@ -342,19 +347,19 @@ class ZoneRecordDal(object):
 
         records = DnsRecord.query.filter_by(domain_name=domain_name, record=origin_record).all()
         if len(records) > 1:
-            raise BadParam("More than one record,check database!")
+            raise BadParam("More than one record,check database!", msg_ch='重复的记录')
         if len(records) == 0:
-            raise BadParam("Can not find this record!")
+            raise BadParam("Can not find this record!", msg_ch='记录不存在')
 
-        update_dict.pop('check_record')
+        update_dict.pop('check_record', None)
         update_dict['update_user'] = username
         DnsRecord.query.filter_by(domain_name=domain_name, record=origin_record).update(update_dict)
 
-        if update_dict.get('record_type') == 'A':
+        if update_dict.get('record_type') in ['A', 'AAAA']:
             # 保证没有重复的A记录
             if DnsRecord.query.filter_by(domain_name=domain_name, record=update_dict['record']).count() > 1:
                 raise BadParam('Domain %s already have record %s' % (domain_name, update_dict['record']),
-                               msg_ch=u'记录与存在')
+                               msg_ch='记录已存在')
 
         # 同一域名的不同记录保持ttl一致
         ttl = update_dict.get('ttl')
@@ -363,7 +368,7 @@ class ZoneRecordDal(object):
 
         # 如果是修改为CNAME,删除所有A记录
         if update_dict.get('record_type') == 'CNAME':
-            DnsRecord.query.filter_by(domain_name=domain_name, record_type='A').delete()
+            DnsRecord.query.filter(DnsRecord.domain_name == domain_name, DnsRecord.record_type != 'A').delete()
 
         return ZoneRecordDal.increase_serial_num(zone)
 

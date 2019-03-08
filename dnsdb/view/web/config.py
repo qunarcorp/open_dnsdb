@@ -172,7 +172,7 @@ def get_named_zone(zone_name):
                dict(name='conf', type=dict, required=True, nullable=False)])
 @resp_wrapper_json
 def check_named_zone(zone, conf):
-    for group, zone_conf in conf.iteritems():
+    for group, zone_conf in conf.items():
         HostGroupConfDal.check_zone_conf(group, zone, zone_conf)
 
 

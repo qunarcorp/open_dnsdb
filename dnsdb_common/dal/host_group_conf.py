@@ -5,7 +5,7 @@ import tempfile
 from collections import OrderedDict
 from hashlib import md5
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from . import db, commit_on_success
 from .models import DnsHeader
@@ -16,14 +16,14 @@ from .models import DnsSerial
 from .models import DnsZoneConf
 from .models import DnsRecord
 from ..library.exception import BadParam, DnsdbException
-from ..library.utils import is_valid_ip_format, is_valid_domain_name
+from ..library.utils import format_ipv4, is_valid_domain_name
 from dnsdb.deploy import start_deploy_job
 
 CONF = cfg.CONF
 
 def start_named_deploy(username, group_md5_conf):
     unfinished = []
-    for group, info in group_md5_conf.iteritems():
+    for group, info in group_md5_conf.items():
         unfinished.extend(info['hosts'])
     job_id = start_deploy_job(username, group_md5_conf, 'named.conf', unfinished)
     return job_id
@@ -34,11 +34,11 @@ def start_zone_header_deploy(user, group, zone_name, conf_type='zone'):
 
     return start_deploy_job(user, deploy_info, conf_type, hosts)
 
-class HostGroupConfDal(object):
+class HostGroupConfDal:
     @staticmethod
     def check_host(hostname, ip):
         is_valid_domain_name(hostname)
-        is_valid_ip_format(ip)
+        format_ipv4(ip)
         if DnsHost.query.filter_by(host_name=hostname).first():
             raise BadParam('Hostname exist, %s' % hostname, msg_ch=u'主机已经存在:%s' % hostname)
         if DnsHost.query.filter_by(host_ip=ip).first():
@@ -177,17 +177,19 @@ class HostGroupConfDal(object):
         if not conf:
             raise BadParam('Can\'t find %s named.conf!' % group_name)
 
-        if md5(conf.conf_content).hexdigest() == md5(conf_content).hexdigest():
+        if md5(conf.conf_content.encode('utf-8')).hexdigest() == md5(conf_content.encode('utf-8')).hexdigest():
             raise BadParam('No change')
 
         named_conf = HostGroupConfDal.build_complete_named_conf(group_name, conf_content)
-        group_conf_md5 = md5(named_conf).hexdigest()
-        conf.conf_content = conf_content
+        group_conf_md5 = md5(named_conf.encode('utf-8')).hexdigest()
 
-        # 生成md5写入到数据库中
-        DnsHostGroup.query.filter_by(group_name=group_name).update(
-            {'group_conf_md5': group_conf_md5}
-        )
+        with db.session.begin(subtransactions=True):
+            DnsNamedConf.query.filter_by(name=group_name).update({'conf_content': conf_content})
+            # 生成md5写入到数据库中
+            DnsHostGroup.query.filter_by(group_name=group_name).update(
+                {'group_conf_md5': group_conf_md5}
+            )
+
         hosts = HostGroupConfDal.get_host_by_group(group_name)
         deploy_info = {group_name: {'md5': group_conf_md5, 'hosts': hosts}}
         job_id = start_named_deploy(username, deploy_info)
@@ -200,7 +202,7 @@ class HostGroupConfDal(object):
             if item.zone_name not in zone_dict:
                 zone_dict[item.zone_name] = []
             zone_dict[item.zone_name].append(item.zone_group)
-        return [{'zone_name': k, 'zone_group': v} for k, v in zone_dict.iteritems()]
+        return [{'zone_name': k, 'zone_group': v} for k, v in zone_dict.items()]
 
     @staticmethod
     def get_named_zone(zone_name):
@@ -230,9 +232,9 @@ class HostGroupConfDal(object):
         for group in host_groups:
             group_md5_dict[group] = {}
             named_conf = HostGroupConfDal.build_complete_named_conf(group)
-            conf_md5 = md5(named_conf).hexdigest()
+            conf_md5 = md5(named_conf.encode('utf-8')).hexdigest()
             DnsHostGroup.query.filter_by(group_name=group).update({
-                'group_conf_md5': md5(named_conf).hexdigest()
+                'group_conf_md5': md5(named_conf.encode('utf-8')).hexdigest()
             })
             group_md5_dict[group]['hosts'] = HostGroupConfDal.get_host_by_group(group)
             group_md5_dict[group]['md5'] = conf_md5
@@ -250,7 +252,7 @@ class HostGroupConfDal(object):
             raise BadParam('zone must and can only exist in one Master group', msg_ch=u'zone能且只能存在于一组master主机中')
         master_group = master_groups[0]
         with db.session.begin(subtransactions=True):
-            for group, zone_conf in conf_dict.iteritems():
+            for group, zone_conf in conf_dict.items():
                 HostGroupConfDal.check_zone_conf(group, zone_name, zone_conf)
                 db.session.add(DnsZoneConf(zone_name=zone_name,
                                            zone_conf=zone_conf,
@@ -283,56 +285,55 @@ class HostGroupConfDal(object):
         return job_id
 
     @staticmethod
-    @commit_on_success
     def update_named_zone(zone_name, zone_type, conf_dict, username):
-        before_items = DnsZoneConf.query.filter_by(zone_name=zone_name).all()
-        if not before_items:
-            raise BadParam('zone %s not exist' % zone_name)
+        with db.session.begin(subtransactions=True):
+            before_items = DnsZoneConf.query.filter_by(zone_name=zone_name).all()
+            if not before_items:
+                raise BadParam('zone %s not exist' % zone_name)
 
-        update_zone_type = zone_type != before_items[0].zone_type
+            update_zone_type = zone_type != before_items[0].zone_type
 
-        before_conf = {item.zone_group: item.zone_conf for item in before_items}
-        delete_groups = set(before_conf.keys()) - set(conf_dict.keys())
-        for group in delete_groups:
-            DnsZoneConf.query.filter_by(zone_name=zone_name, zone_group=group).delete()
-        update_group = set()
-        for group, zone_conf in conf_dict.iteritems():
-            HostGroupConfDal.check_zone_conf(group, zone_name, zone_conf)
-            if group not in before_conf:
-                update_group.add(group)
-                db.session.add(DnsZoneConf(zone_name=zone_name,
-                                           zone_conf=zone_conf,
-                                           zone_type=zone_type,
-                                           zone_group=group))
-            elif before_conf[group] != zone_conf:
-                update_group.add(group)
-                DnsZoneConf.query.filter_by(zone_name=zone_name, zone_group=group).update({
-                    'zone_conf': zone_conf
+            before_conf = {item.zone_group: item.zone_conf for item in before_items}
+            delete_groups = set(before_conf.keys()) - set(conf_dict.keys())
+            for group in delete_groups:
+                DnsZoneConf.query.filter_by(zone_name=zone_name, zone_group=group).delete()
+            update_group = set()
+            for group, zone_conf in conf_dict.items():
+                HostGroupConfDal.check_zone_conf(group, zone_name, zone_conf)
+                if group not in before_conf:
+                    update_group.add(group)
+                    db.session.add(DnsZoneConf(zone_name=zone_name,
+                                               zone_conf=zone_conf,
+                                               zone_type=zone_type,
+                                               zone_group=group))
+                elif before_conf[group] != zone_conf:
+                    update_group.add(group)
+                    DnsZoneConf.query.filter_by(zone_name=zone_name, zone_group=group).update({
+                        'zone_conf': zone_conf
+                    })
+            group_need_update = delete_groups | update_group
+
+            if update_zone_type:
+                group_need_update = set(before_conf.keys()) | set(conf_dict.keys())
+                DnsZoneConf.query.filter_by(zone_name=zone_name).update({
+                    'zone_type': zone_type
                 })
-        group_need_update = delete_groups | update_group
 
-        if update_zone_type:
-            group_need_update = set(before_conf.keys()) | set(conf_dict.keys())
-            DnsZoneConf.query.filter_by(zone_name=zone_name).update({
-                'zone_type': zone_type
-            })
+            if not group_need_update:
+                raise BadParam('No change', msg_ch=u'没有要更新的配置')
 
-        if not group_need_update:
-            raise BadParam('No change', msg_ch=u'没有要更新的配置')
-
-        group_md5_dict = HostGroupConfDal.update_group_conf_md5(group_need_update)
+            group_md5_dict = HostGroupConfDal.update_group_conf_md5(group_need_update)
 
         return start_named_deploy(username, group_md5_dict)
 
     @staticmethod
-    @commit_on_success
     def delete_named_zone(zone, username):
         group_need_update = {item.zone_group: item.zone_conf for item in DnsZoneConf.query.filter_by(zone_name=zone)}
+        with db.session.begin(subtransactions=True):
+            DnsRecord.query.filter_by(zone_name=zone).delete()
+            DnsSerial.query.filter_by(zone_name=zone).delete()
+            DnsHeader.query.filter_by(zone_name=zone).delete()
+            DnsZoneConf.query.filter_by(zone_name=zone).delete()
 
-        DnsRecord.query.filter_by(zone_name=zone).delete()
-        DnsSerial.query.filter_by(zone_name=zone).delete()
-        DnsHeader.query.filter_by(zone_name=zone).delete()
-        DnsZoneConf.query.filter_by(zone_name=zone).delete()
-
-        group_md5_dict = HostGroupConfDal.update_group_conf_md5(group_need_update.keys())
+            group_md5_dict = HostGroupConfDal.update_group_conf_md5(group_need_update.keys())
         return group_need_update, start_named_deploy(username, group_md5_dict)

@@ -2,9 +2,6 @@
   <div class="tab-panel">
     <div>
       <el-row>
-        <el-col :span="8"><div class="grid-content">
-          <el-button size="large" style="display: inline-block;margin-left: 2px" @click="addRecordVisible = true">新增域名</el-button>
-        </div></el-col>
         <el-col :span="16"><div class="grid-content">
           <el-select v-model="searchType" clearable size='large' placeholder="请选择" @change="searchCondition=''">
             <el-option
@@ -17,6 +14,9 @@
           <el-input class="large-input" v-model="searchCondition" size="large"
                     @keyup.enter.native="searchGeneral"/>
           <el-button size="large" type="primary"  @click="searchGeneral">搜索</el-button>
+        </div></el-col>
+        <el-col :span="8"><div class="grid-content">
+          <el-button size="large" style="display: inline-block;margin-left: 2px" @click="addRecordVisible = true">新增域名</el-button>
         </div></el-col>
       </el-row>
     </div>
@@ -72,7 +72,7 @@
     <el-dialog
       title="新增域名"
       :visible.sync="addRecordVisible"
-      width="40%">
+      width="50%">
       <div>
         <div class="input-label">新增域名</div>
         <el-input class="large-input" size="large" v-model="addRecordName" placeholder="新增域名" @blur="getDefaultTTL"></el-input>
@@ -97,14 +97,17 @@
         <div v-if="!isAutoBind">
           <div class="input-div">
             <div class="input-label">记录类型</div>
-            <el-select class="medium-input" v-model="addRecordType" >
-              <el-option label="A" key="A" value="A"></el-option>
-              <el-option label="CNAME" key="CNAME" value="CNAME"></el-option>
+            <el-select class="medium-input" v-model="addRecordType">
+              <el-option
+                v-for="item in recordTypeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value">
+              </el-option>
             </el-select>
-            <el-checkbox v-if="addRecordType==='CNAME'" v-model="isCheckRecord"></el-checkbox>
+            <el-checkbox v-model="isCheckRecord"></el-checkbox>
             <span v-if="addRecordType==='CNAME'" class="input-label">检查CNAME</span>
-            <el-checkbox v-if="addRecordType==='A'" v-model="isCheckRecord"></el-checkbox>
-            <span v-if="addRecordType==='A'" class="input-label">检查IP</span>
+            <span v-if="addRecordType==='A' || addRecordType==='AAAA'" class="input-label">检查IP</span>
           </div>
           <div class="input-div">
             <div class="input-label">域名记录</div>
@@ -122,7 +125,7 @@
       </div>
       <div class="tip">
         <div>说明:</div>
-        <div style="color: red">1、可添加多条A记录，只能添加一条CNAME记录，两种记录不能并存。</div>
+        <div style="color: red">1、可添加多条A/AAAA记录，只能添加一条CNAME记录，两种记录不能并存。</div>
         <div style="color: red">2、取消勾选检查CNMAE后可解析到第三方域名。</div>
         <div style="color: red">3、取消勾选检查IP后可解析到非ippool中的IP。</div>
         <div>4、TTL为0时，使用全局TTL配置。</div>
@@ -132,29 +135,33 @@
     <el-dialog
       title="记录修改"
       :visible.sync="editDialogVisible"
-      width="30%">
+      width="50%">
       <div>
-        <div class="dialog_div">
-          <div class="dialog_label">域名</div>
-          <el-input class="xlarge-input" v-model="editName" :disabled="true"/>
+        <div class="input-div">
+          <div class="input-label">域名</div>
+          <el-input class="large-input" v-model="editName" :disabled="true"></el-input>
         </div>
-        <div class="dialog_div">
-          <div class="dialog_label">类型</div>
+        <div class="input-div">
+          <div class="input-label">类型</div>
           <el-select class="medium-input" v-model="editRecord.record_type">
-            <el-option label="A" key="A" value="A"></el-option>
-            <el-option label="CNAME" key="CNAME" value="CNAME"></el-option>
+            <el-option
+                v-for="item in recordTypeOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value">
+              </el-option>
           </el-select>
           <el-checkbox v-model="editRecord.check"></el-checkbox>
           <span v-if="editRecord.record_type==='CNAME'" class="input-label">检查CNAME</span>
-          <span v-if="editRecord.record_type==='A'" class="input-label">检查IP</span>
+          <span v-if="editRecord.record_type==='A' || editRecord.record_type==='AAAA'" class="input-label">检查IP</span>
         </div>
-        <div class="dialog_div">
-          <div class="dialog_label">记录</div>
-          <el-input class="xlarge-input" placeholder="请输入记录" v-model="editRecord.record" />
+        <div class="input-div">
+          <div class="input-label">记录</div>
+          <el-input class="large-input" placeholder="请输入记录" v-model="editRecord.record" />
         </div>
-        <div class="dialog_div">
-          <div class="dialog_label">TTL</div>
-          <el-input class="xlarge-input" placeholder="请输入TTL" v-model="editRecord.ttl"/>
+        <div class="input-div">
+          <div class="input-label">TTL</div>
+          <el-input class="large-input" placeholder="请输入TTL" v-model="editRecord.ttl"/>
         </div>
       </div>
       <span slot="footer" class="dialog-footer">
@@ -177,6 +184,16 @@
         }, {
           label: '解析',
           value: 'record'
+        }],
+        recordTypeOptions: [{
+          label: 'A',
+          value: 'A'
+        }, {
+          label: 'AAAA',
+          value: 'AAAA'
+        }, {
+          label: 'CNAME',
+          value: 'CNAME'
         }],
         searchType: 'domain',
         searchCondition: '',

@@ -20,7 +20,7 @@ from ..library.log import setup, getLogger
 
 setup("dnsdb")
 log = getLogger(__name__)
-
+A_RECORDS = ('A', 'AAAA')
 
 class MigrateDal(object):
     @staticmethod
@@ -54,7 +54,7 @@ class MigrateDal(object):
     @staticmethod
     def get_view_domain_rooms():
         domain_rooms = {}
-        query = ViewRecords.query.filter_by(record_type='A')
+        query = ViewRecords.query.filter(ViewRecords.record_type.in_(A_RECORDS))
         for result in query.all():
             domain_rooms.setdefault(result.domain_name, set())
             domain_rooms[result.domain_name].add(result.property)
@@ -128,7 +128,7 @@ class MigrateDal(object):
     @staticmethod
     @commit_on_success
     def add_batch_abnormal_isp(user, isp_rooms_dict):
-        for isp, rooms in isp_rooms_dict.iteritems():
+        for isp, rooms in isp_rooms_dict.items():
             for room in rooms:
                 MigrateDal.add_or_update_abnormal_isp(user, isp, room)
 
@@ -140,7 +140,7 @@ class MigrateDal(object):
         domain_rooms = MigrateDal.get_view_domain_rooms()
 
         # 符合迁移条件的域名与机房的结果
-        for isp, migrate_rooms in to_migrate_dict.iteritems():
+        for isp, migrate_rooms in to_migrate_dict.items():
             migrate_domains_list = []
             rules = set()
             # 只迁移A记录
@@ -180,7 +180,7 @@ class MigrateDal(object):
         isp_migrate_domains = MigrateDal.list_migrate_domain_by_isp(to_migrate_dict, dst_rooms)
 
         domains_cur_after_isps = {}
-        for isp, domains in isp_migrate_domains.iteritems():
+        for isp, domains in isp_migrate_domains.items():
             for domain_info in domains:
                 if not domain_info['cur']:
                     continue
@@ -190,8 +190,8 @@ class MigrateDal(object):
 
         domain_isps = []
         trans = MigrateDal.get_isp_trans()
-        for domain, rule_isps in domains_cur_after_isps.iteritems():
-            for (cur, after), isps in rule_isps.iteritems():
+        for domain, rule_isps in domains_cur_after_isps.items():
+            for (cur, after), isps in rule_isps.items():
                 domain_isps.append({
                     'domain_name': domain,
                     'cur': cur,

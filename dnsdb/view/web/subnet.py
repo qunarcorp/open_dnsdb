@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import re
+import ipaddress
 
 from flask import (Blueprint)
 from flask_login import login_required
 
 from dnsdb_common.dal.subnet_ip import SubnetIpDal
-from dnsdb_common.library.IPy import IP
 from dnsdb_common.library.decorators import add_web_opration_log
 from dnsdb_common.library.decorators import parse_params
 from dnsdb_common.library.decorators import resp_wrapper_json
@@ -32,19 +32,25 @@ def _is_valide_region(region):
 def _validate_args(subnet, region, colo):
     if '/' not in subnet:
         raise BadParam('Invalid subnet.', msg_ch=u'请使用cidr格式的网段')
-    try:
-        sub = IP(subnet)
-    except:
-        raise BadParam('Invalid subnet.', msg_ch=u'错误的网段格式')
-
-    prefix = sub.prefixlen()
-    if prefix < 16 or prefix > 32:
-        raise BadParam('Invalid subnet.', msg_ch=u'掩码长度在[16-32]之间')
 
     _is_valide_region(region)
 
     if colo not in SubnetIpDal.get_colo_by_group('subnet'):
         raise BadParam('Invalid colo', msg_ch=u'请先配置机房')
+
+    try:
+        sub = ipaddress.ip_network(subnet)
+    except Exception as e:
+        raise BadParam('Invalid subnet: %s' % e, msg_ch=u'错误的网段格式')
+
+    prefix = sub.prefixlen
+    if sub.version == 4:
+        if prefix < 16 or prefix > 32:
+            raise BadParam('Invalid subnet.', msg_ch=u'IPv4掩码长度在[16-32]之间')
+    else:
+        if prefix < 64 or prefix > 128:
+            raise BadParam('Invalid subnet.', msg_ch=u'IPv6掩码长度在[64-128]之间')
+
 
 
 def add_subnet_log(result, **kwargs):

@@ -33,16 +33,16 @@
         :title="editZoneName"
         :visible.sync="editZoneDialogVisible">
         <el-row :gutter="0" type="flex" >
-          <el-col :span="4">
+          <el-col :span="5">
             <span class="small-title">主机组：</span>
             <div v-for="conf in editZoneConf" >
               <el-checkbox :checked="conf.use" @change="selectGroupConf(conf)"/>
               <span @click="getEditGroupConf(conf.group)" class="small-list-item">{{ conf.group }}</span>
             </div>
           </el-col>
-          <el-col :span="20">
+          <el-col :span="19">
             <el-row :gutter="0" type="flex"  style="margin-bottom: 5px">
-              <el-col :span="16">
+              <el-col :span="20">
                 <label class="small-title">编辑主机组：{{ editGroupConf.group}}</label>
                 <label class="zone-type-label">Zone类型</label>
                 <el-select class="zone-type-select" size="small" v-model="editZoneType" placeholder="Zone类型">
@@ -54,7 +54,7 @@
                   </el-option>
                 </el-select>
               </el-col>
-              <el-col :span="8" style="text-align: right">
+              <el-col :span="4" style="text-align: right">
                 <el-button class="button" size="small" @click="editGetTemplate(editZoneName,editGroupConf.group)">填入模板</el-button>
               </el-col>
             </el-row>
@@ -77,8 +77,9 @@
       <el-dialog
         v-if="addZoneDialogVisible"
         title="新增Zone"
+        width="50"
         :visible.sync="addZoneDialogVisible">
-        <el-input size="small" v-model="addZoneName" placeholder="新增Zone名" style="width: 300px" :disabled="true"></el-input>
+        <el-input size="small" v-model="addZoneName" placeholder="新增Zone名" style="width: 200px" :disabled="true"></el-input>
         <el-tooltip class="item" effect="dark" content="Zone为forward类型无需勾选" placement="right-start">
           <el-checkbox style="margin-left: 20px" v-model="addZoneHeader" label="新增头文件"/>
         </el-tooltip>
@@ -92,7 +93,7 @@
           </el-option>
         </el-select>
         <el-row :gutter="0" type="flex" style="margin-top: 10px">
-          <el-col :span="4">
+          <el-col :span="5">
             <span class="small-title">主机组：</span>
             <div v-for="conf in addZoneConf" >
               <el-checkbox :checked="conf.use" @change="selectGroupConf(conf)"/>
@@ -202,7 +203,7 @@
           inputErrorMessage: 'Zone名格式不正确'
         }).then(({ value }) => {
           this.addZoneType = 2
-          if (value.indexOf('.IN-ADDR.ARPA') >= 0) {
+          if (value.toLowerCase().indexOf('.arpa') >= 0) {
             this.addZoneType = 0
           }
           this.addZoneName = value
@@ -296,8 +297,8 @@
       },
 
       getFileNameFromZoneName (zoneName) {
-        if (zoneName.indexOf('.IN-ADDR.ARPA') > 0) {
-          let filename = zoneName.replace('.IN-ADDR.ARPA', '')
+        if (zoneName.toLowerCase().indexOf('.in-addr.arpa') > 0) {
+          let filename = zoneName.toLowerCase().replace('.in-addr.arpa', '')
           filename = filename.split('.').reverse().join('.') + '.zone'
           return filename
         } else {

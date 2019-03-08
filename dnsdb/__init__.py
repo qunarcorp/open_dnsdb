@@ -6,7 +6,7 @@ import sys
 from flask import Flask
 from flask_login import LoginManager
 from flask_restful import abort
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dnsdb.config import Config, setup_config
 from dnsdb_common.dal import db

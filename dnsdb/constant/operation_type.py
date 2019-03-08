@@ -23,7 +23,7 @@ operation_type_dict = {
     'update_zone_header': '头文件更新',
     'update_named_zone': '配置更新zone',
     'add_named_zone': '配置新增zone',
-    'delete_zone_conf': '配置删除zone',
+    'delete_named_zone': '配置删除zone',
     'update_named_conf_header': '配置更新named',
     'conf_deploy': '配置部署',
     'rename_subnet': '子网重命名',

@@ -14,6 +14,7 @@ class Subnets(db.Model, AuditTimeMixin, JsonMixin):
     comment = db.Column(db.String(100))
     colo = db.Column(db.String(64), nullable=False, default='')
     intranet = db.Column(db.Boolean, nullable=False, default=False)
+    is_ipv6 = db.Column(db.Boolean, nullable=False, default=False)
 
     def __repr__(self):
         return '<Subnets> [region_name: %s, subnet: %s]' % (self.region_name, self.subnet)

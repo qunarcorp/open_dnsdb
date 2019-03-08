@@ -2,7 +2,7 @@
 
 import os
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 CONF = cfg.CONF
 
@@ -140,6 +140,6 @@ def setup_config(app_env, app_kind, conf_dir):
     setattr(CONF, 'bind_conf', CONF.bind_default)
 
     if getattr(CONF, CONF.host_group, None):
-        for k, v in CONF[CONF.host_group].iteritems():
+        for k, v in CONF[CONF.host_group].items():
             if v is not None:
                 setattr(CONF.bind_conf, k, v)

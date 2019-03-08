@@ -3,23 +3,19 @@
 
 
 import datetime
+import ipaddress
 import os
 import re
 import socket
 from importlib import import_module
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dnsdb_common.dal import db
 from dnsdb_common.dal.models import DnsHeader
 from dnsdb_common.dal.models import DnsSerial
 from dnsdb_common.library.exception import DnsdbException, BadParam
 from dnsdb_common.library.log import getLogger
-
-try:
-    basestring     # Python 2
-except NameError:  # Python 3
-    basestring = (str, )
 
 log = getLogger(__name__)
 
@@ -46,7 +42,7 @@ def is_valid_domain_name_v2(domain_name):
     if len(domain_name) > 256:
         raise BadParam("Domain name %s is too long." % domain_name, msg_ch=u'域名长度需小于256')
     if len(domain_name.split(".")) < 2:
-        raise BadParam("not enough level:%s" % domain_name)
+        raise BadParam("not enough level:%s" % domain_name, msg_ch=u'域名至少是一个二级域名')
     if re.match("^(\*\.)?([0-9a-zA-Z][-0-9a-zA-Z]{0,63}\.)+[a-z]{0,63}$", domain_name) is None or domain_name.find(
             "-.") != -1:
         raise BadParam("Invalid formation:%s" % domain_name, msg_ch=u'域名中只能包含[-.0-9a-zA-Z], %s' % domain_name)
@@ -56,14 +52,53 @@ def is_valid_domain_name_v2(domain_name):
 def is_valid_domain_name(domain_name):
     is_valid_domain_name_v2(domain_name)
     if domain_name.startswith('*.'):
-        raise BadParam('Domain name cannot include "*"')
+        raise BadParam('Domain name cannot include "*"', msg_ch='域名中不能包含 *')
     return True
 
+def format_ip(ip):
+    try:
+        ip = ipaddress.ip_address(ip)
+    except Exception as e:
+        raise BadParam('Invalid ip format: %s' % e, msg_ch='ip格式错误')
+    return str(ip), ip.version
 
-def is_valid_ip_format(ip):
-    if (not IP_PATTERN.match(ip)) or ip.endswith(".255") or ip.endswith(".0"):
-        raise BadParam('Invalid ip format', msg_ch=u'ip格式错误')
-    return True
+def format_ipv4(ip):
+    if '.' not in ip:
+        raise BadParam('Invalid IPv6 format', msg_ch='IPv6格式错误')
+    try:
+        ip = ipaddress.ip_address(ip)
+    except Exception as e:
+        raise BadParam('Invalid ip format: %s' % e, msg_ch='ip格式错误')
+    return str(ip)
+
+
+def format_ipv6(ip):
+    if ':' not in ip:
+        raise BadParam('Invalid IPv6 format', msg_ch='IPv6格式错误')
+    try:
+        ip = ipaddress.ip_address(ip)
+    except Exception as e:
+        raise BadParam('Invalid ip format: %s' % e, msg_ch='ip格式错误')
+    return str(ip)
+
+
+def get_ip_int_str(ip, is_ipv6):
+    str_ip = str(int(ip))
+    length = 10
+    if is_ipv6:
+        length = 39
+    return '0' * (length - len(str_ip)) + str_ip
+
+
+def format_subnet(subnet):
+    try:
+        subnet_obj = ipaddress.ip_network(subnet)
+    except:
+        raise BadParam('invalid subnet: %s' % subnet, msg_ch='网段格式错误: %s' % subnet)
+    start_ip = subnet_obj.network_address
+    end_ip = subnet_obj.broadcast_address
+    is_ipv6 = (subnet_obj.version == 6)
+    return str(subnet_obj), is_ipv6, float(int(start_ip)), float(int(end_ip))
 
 
 def is_valid_ip_bysocket(ip):
@@ -83,7 +118,7 @@ def is_valid_ip_bysocket(ip):
 
 
 def is_string(s):
-    return isinstance(s, basestring)
+    return isinstance(s, str)
 
 
 def select_best_matched_domain(db, domain_name):
@@ -142,7 +177,7 @@ def is_valid_cname(cname):
 
 def get_dict_from_table(obj):
     res = {}
-    for k, v in obj.__dict__.iteritems():
+    for k, v in obj.__dict__.items():
         if not k.startswith('_'):
             res[k] = v.strftime('%Y-%m-%d %H:%M:%S') if isinstance(v, datetime.datetime) else v
     return res

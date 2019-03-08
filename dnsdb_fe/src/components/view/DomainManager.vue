@@ -164,7 +164,7 @@
               <div>
                 <el-tag class="item-tag"
                   v-for="value in scope.row.conf"
-                  key="key"
+                  key="value"
                   :closable="true"
                   :close-transition="true"
                   @close="handleDeleteConf(scope.$index, value)">

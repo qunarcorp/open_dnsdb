@@ -6,11 +6,12 @@ Further Information might be available at:
 https://github.com/haypo/python-ipy
 """
 
-__version__ = '0.81'
+__version__ = '1.00'
 
 import bisect
 import collections
 import sys
+import types
 
 # Definition of the Ranges for IPv4 IPs
 # this should include www.iana.org/assignments/ipv4-address-space
@@ -19,7 +20,8 @@ IPv4ranges = {
     '0': 'PUBLIC',  # fall back
     '00000000': 'PRIVATE',  # 0/8
     '00001010': 'PRIVATE',  # 10/8
-    '01111111': 'PRIVATE',  # 127.0/8
+    '0110010001': 'CARRIER_GRADE_NAT',  # 100.64/10
+    '01111111': 'LOOPBACK',  # 127.0/8
     '1': 'PUBLIC',  # fall back
     '1010100111111110': 'PRIVATE',  # 169.254/16
     '101011000001': 'PRIVATE',  # 172.16/12
@@ -119,13 +121,10 @@ MAX_IPV6_ADDRESS = 0xffffffffffffffffffffffffffffffff
 IPV6_TEST_MAP = 0xffffffffffffffffffffffff00000000
 IPV6_MAP_MASK = 0x00000000000000000000ffff00000000
 
-try:               # Python 2
-    INT_TYPES = (int, long)
-    STR_TYPES = (str, unicode)
-except NameError:  # Python 3
-    INT_TYPES = (int,)
-    STR_TYPES = (str,)
-    xrange = range
+
+INT_TYPES = (int,)
+STR_TYPES = (str,)
+xrange = range
 
 
 class IPint(object):
@@ -241,7 +240,7 @@ class IPint(object):
             else:
                 raise ValueError("can't parse")
 
-            (self.ip, parsedVersion) = parseAddress(ip)
+            (self.ip, parsedVersion) = parseAddress(ip, ipversion)
             if ipversion == 0:
                 ipversion = parsedVersion
             if prefixlen == -1:
@@ -471,7 +470,7 @@ class IPint(object):
         """Return a description of the IP type ('PRIVATE', 'RESERVED', etc).
 
         >>> print(IP('127.0.0.1').iptype())
-        PRIVATE
+        LOOPBACK
         >>> print(IP('192.168.1.1').iptype())
         PRIVATE
         >>> print(IP('195.185.1.2').iptype())
@@ -551,6 +550,9 @@ class IPint(object):
         """
         return True
 
+    def __bool__(self):
+        return self.__nonzero__()
+
     def __len__(self):
         """
         Return the length of a subnet.
@@ -603,6 +605,8 @@ class IPint(object):
         IP('127.0.0.3')
         """
 
+        if isinstance(key, slice):
+            return [self.ip + int(x) for x in xrange(*key.indices(len(self)))]
         if not isinstance(key, INT_TYPES):
             raise TypeError
         if key < 0:
@@ -692,16 +696,16 @@ class IPint(object):
 
         Should return a negative integer if self < other, zero if self
         == other, a positive integer if self > other.
-        
+
         Order is first determined by the address family. IPv4 addresses
         are always smaller than IPv6 addresses:
-        
+
         >>> IP('10.0.0.0') < IP('2001:db8::')
         1
-        
+
         Then the first address is compared. Lower addresses are
         always smaller:
-        
+
         >>> IP('10.0.0.0') > IP('10.0.0.1')
         0
         >>> IP('10.0.0.0/24') > IP('10.0.0.1')
@@ -712,10 +716,10 @@ class IPint(object):
         1
         >>> IP('10.0.1.0/24') > IP('10.0.0.0')
         1
-        
+
         Then the prefix length is compared. Shorter prefixes are
         considered smaller than longer prefixes:
-        
+
         >>> IP('10.0.0.0/24') > IP('10.0.0.0')
         0
         >>> IP('10.0.0.0/24') > IP('10.0.0.0/25')
@@ -752,6 +756,9 @@ class IPint(object):
 
     def __lt__(self, other):
         return self.__cmp__(other) < 0
+
+    def __le__(self, other):
+        return self.__cmp__(other) <= 0
 
     def __hash__(self):
         """Called for the key object for dictionary operations, and by
@@ -947,6 +954,8 @@ class IP(IPint):
         >>> print(str(ip[-1]))
         127.0.0.3
         """
+        if isinstance(key, slice):
+            return [IP(IPint.__getitem__(self, x), ipversion=self._ipversion) for x in xrange(*key.indices(len(self)))]
         return IP(IPint.__getitem__(self, key), ipversion=self._ipversion)
 
     def __repr__(self):
@@ -1001,13 +1010,7 @@ class IP(IPint):
                          % repr(self))
 
 
-try:
-    IPSetBaseClass = collections.MutableSet
-except AttributeError:
-    IPSetBaseClass = object
-
-
-class IPSet(IPSetBaseClass):
+class IPSet(collections.MutableSet):
     def __init__(self, iterable=[]):
         # Make sure it's iterable, otherwise wrap
         if not isinstance(iterable, collections.Iterable):
@@ -1028,13 +1031,11 @@ class IPSet(IPSetBaseClass):
             # Don't dig through more-specific ranges
             ip_mask = ip._prefixlen
             valid_masks = [x for x in valid_masks if x <= ip_mask]
-        for mask in valid_masks:
+        for mask in sorted(valid_masks):
             i = bisect.bisect(self.prefixtable[mask], ip)
             # Because of sorting order, a match can only occur in the prefix
             # that comes before the result of the search.
-            if i == 0:
-                return False
-            if ip in self.prefixtable[mask][i - 1]:
+            if i and ip in self.prefixtable[mask][i - 1]:
                 return True
 
     def __iter__(self):
@@ -1052,6 +1053,31 @@ class IPSet(IPSetBaseClass):
         for prefix in other:
             new.discard(prefix)
         return new
+
+    def __and__(self, other):
+        left = iter(self.prefixes)
+        right = iter(other.prefixes)
+        result = []
+        try:
+            l = next(left)
+            r = next(right)
+            while True:
+                # iterate over prefixes in order, keeping the smaller of the
+                # two if they overlap
+                if l in r:
+                    result.append(l)
+                    l = next(left)
+                    continue
+                elif r in l:
+                    result.append(r)
+                    r = next(right)
+                    continue
+                if l < r:
+                    l = next(left)
+                else:
+                    r = next(right)
+        except StopIteration:
+            return IPSet(result)
 
     def __repr__(self):
         return '%s([' % self.__class__.__name__ + ', '.join(map(repr, self.prefixes)) + '])'
@@ -1109,6 +1135,22 @@ class IPSet(IPSetBaseClass):
                     break
 
         self.optimize()
+
+    def isdisjoint(self, other):
+        left = iter(self.prefixes)
+        right = iter(other.prefixes)
+        try:
+            l = next(left)
+            r = next(right)
+            while True:
+                if l in r or r in l:
+                    return False
+                if l < r:
+                    l = next(left)
+                else:
+                    r = next(right)
+        except StopIteration:
+            return True
 
     def optimize(self):
         # The algorithm below *depends* on the sort order
@@ -1289,7 +1331,7 @@ def _parseAddressIPv6(ipstr):
     return value
 
 
-def parseAddress(ipstr):
+def parseAddress(ipstr, ipversion=0):
     """
     Parse a string and return the corresponding IP address (as integer)
     and a guess of the IP version.
@@ -1358,7 +1400,7 @@ def parseAddress(ipstr):
         # assume IPv6 in pure hexadecimal notation
         return (hexval, 6)
 
-    elif ipstr.find('.') != -1 or (intval is not None and intval < 256):
+    elif ipstr.find('.') != -1 or (intval is not None and intval < 256 and ipversion != 6):
         # assume IPv4  ('127' gets interpreted as '127.0.0.0')
         bytes = ipstr.split('.')
         if len(bytes) > 4:
@@ -1376,7 +1418,7 @@ def parseAddress(ipstr):
         # will be interpreted as IPv4 first byte
         if intval > MAX_IPV6_ADDRESS:
             raise ValueError("IP Address can't be larger than %x: %x" % (MAX_IPV6_ADDRESS, intval))
-        if intval <= MAX_IPV4_ADDRESS:
+        if intval <= MAX_IPV4_ADDRESS and ipversion != 6:
             return (intval, 4)
         else:
             return (intval, 6)
@@ -1593,7 +1635,7 @@ def _remove_subprefix(prefix, subprefix):
     # Start cutting in half, recursively
     prefixes = [
         IP('%s/%d' % (prefix[0], prefix._prefixlen + 1)),
-        IP('%s/%d' % (prefix[prefix.len() / 2], prefix._prefixlen + 1)),
+        IP('%s/%d' % (prefix[int(prefix.len() / 2)], prefix._prefixlen + 1)),
     ]
     if subprefix in prefixes[0]:
         return _remove_subprefix(prefixes[0], subprefix) + IPSet([prefixes[1]])

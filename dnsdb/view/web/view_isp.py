@@ -29,7 +29,7 @@ def _validate_args(param_dict):
     }
 
     param = {}
-    for k, v in validator_param.iteritems():
+    for k, v in validator_param.items():
         ok, format_str = valid_string(param_dict[k], **v)
         if not ok:
             raise BadParam(u'param validate error: %s, %s' % (k, v), msg_ch=u'%s: %s' % (k, format_str))

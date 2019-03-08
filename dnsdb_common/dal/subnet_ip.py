@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from dnsdb_common.library.IPy import IP
+import ipaddress
+
 from dnsdb_common.library.exception import BadParam
 from . import commit_on_success
 from . import db
@@ -64,26 +65,31 @@ class SubnetIpDal(object):
 
     @staticmethod
     def add_subnet(subnet, region, colo, comment, username):
-        subnet = IP(subnet)
-        intranet = subnet.iptype() == 'PRIVATE'
-        net_id = subnet.net()
-        broadcast_ip = subnet.broadcast()
+        subnet = ipaddress.ip_network(subnet)
+        intranet = subnet.is_private
+        net_id = subnet.network_address
+        broadcast_ip = subnet.broadcast_address
+        is_ipv6 = (subnet.version == 6)
         ips_dict_list = []
         for i in subnet:
             if i == net_id or i == broadcast_ip:
                 continue
             ips_dict_list.append({
                 'region': region,
-                'fixed_ip': str(i)
+                'fixed_ip': str(i),
+                'is_ipv6': is_ipv6
             })
+        if Subnets.query.filter_by(region_name=region).first():
+            raise BadParam('region already exist', msg_ch='网段名已存在')
         try:
             with db.session.begin(subtransactions=True):
                 subnet_item = Subnets(
                     region_name=region,
-                    subnet=subnet.strCompressed(),
+                    subnet=str(subnet),
                     create_user=username,
                     intranet=intranet,
-                    colo=colo
+                    colo=colo,
+                    is_ipv6=is_ipv6
                 )
                 if comment:
                     subnet_item.comment = comment
@@ -100,7 +106,7 @@ class SubnetIpDal(object):
             raise BadParam('Region does not exist: %s' % region, msg_ch=u'网段不存在')
         # 删除一个region
         ip_records = SubnetIpDal.get_subnet_ip(region)
-        if filter(lambda x: x['domain'], ip_records):
+        if list(filter(lambda x: x['domain'], ip_records)):
             raise BadParam('Region %s has records,delete failed!' % region, msg_ch=u'网段正在使用中，不允许删除')
 
         Subnets.query.filter_by(region_name=region, subnet=subnet).delete()
@@ -130,14 +136,6 @@ class SubnetIpDal(object):
         if kwargs:
             query = query.filter_by(**kwargs)
         return query.order_by(Subnets.region_name, Subnets.subnet).all()
-
-    @staticmethod
-    def get_region_domains(region_name, limit):
-        sql = """SELECT tb_record.name FROM tb_ippool LEFT JOIN tb_record\
-                                ON tb_record.records = host(tb_ippool.fixed_ips)
-                                WHERE tb_ippool.region = '%(region)s' and tb_record.name is not null
-                                limit %(limit)d;""" % {'region': region_name, 'limit': limit}
-        return db.session.execute(sql).fetchall()
 
     @staticmethod
     def bulk_update_subnet(update_mapping):

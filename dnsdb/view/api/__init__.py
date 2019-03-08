@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 
-from __future__ import print_function
 from flask import (Blueprint)
 
 from dnsdb_common.dal.host_group_conf import HostGroupConfDal

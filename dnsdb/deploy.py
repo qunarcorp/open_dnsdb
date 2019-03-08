@@ -5,7 +5,7 @@ import threading
 import time
 
 from flask import Flask
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dnsdb_common.dal import db
 from dnsdb_common.dal.operation_log import OperationLogDal
@@ -53,7 +53,7 @@ class DeployThread(threading.Thread):
 
     def update_named_conf(self):
         self.unfinished = {}
-        for group_name, info in self.deploy_info.iteritems():
+        for group_name, info in self.deploy_info.items():
             conf_md5 = info['md5']
             hosts = info['hosts']
             for host_ip in hosts:
@@ -72,7 +72,7 @@ class DeployThread(threading.Thread):
         acl_files = self.deploy_info.get('acl_files', [])
         if not hosts or not acl_files:
             OperationLogDal.update_opration_log(self.job_id, {'op_result': 'ok'})
-        for group_name, hosts in hosts.iteritems():
+        for group_name, hosts in hosts.items():
             for host in hosts:
                 try:
                     result = DnsUpdaterApi(host_ip=host).notify_update(self.deploy_type, group_name,

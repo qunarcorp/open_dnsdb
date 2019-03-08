@@ -11,6 +11,7 @@ class IpPool(db.Model, AuditTimeMixin):
     fixed_ip = db.Column(db.String(256), primary_key=True)
     region = db.Column(db.String(50), nullable=False)
     allocated = db.Column(db.Boolean, nullable=False, default=True)
+    is_ipv6 = db.Column(db.Boolean, nullable=False, default=False)
 
     def __repr__(self):
         return '<IpPool> [fixed_ip: %s, region: %s]' % (self.ip, self.region)

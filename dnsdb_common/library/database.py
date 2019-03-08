@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import sqlite3
-from oslo.config import cfg
+from oslo_config import cfg
 
 from ..library import exception as err
-from ..library.log import log
+from ..library.log import getLogger
+log = getLogger(__name__)
 
 CONF = cfg.CONF
 

@@ -1,24 +1,24 @@
 # -*- coding: utf-8 -*-
 
-import commands
+import subprocess as commands
 import os
 import re
-import socket
 import shutil
+import socket
 import threading
 from hashlib import md5
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dns_updater.utils.updater_util import DnsdbApi
-from dns_updater.utils.updater_util import send_alarm_email
 from dns_updater.utils.updater_util import backup_file
-from dns_updater.utils.updater_util import make_zone_file_from_dnsdb
 from dns_updater.utils.updater_util import checkzone
+from dns_updater.utils.updater_util import make_zone_file_from_dnsdb
 from dns_updater.utils.updater_util import run_command_with_code
-
+from dns_updater.utils.updater_util import send_alarm_email
 from dnsdb_common.library.exception import UpdaterErr
 from dnsdb_common.library.log import getLogger
+
 log = getLogger(__name__)
 
 CONF = cfg.CONF
@@ -33,18 +33,23 @@ def _is_local_dns(group_name=None):
 def _get_named_dir():
     return CONF.bind_conf.named_dir
 
+
 def _get_acl_dir():
     return CONF.bind_conf.acl_dir
 
+
 def _get_local_hostname():
     return socket.gethostname()
+
 
 def _get_named_path():
     named_dir = _get_named_dir()
     return os.path.join(named_dir, 'named.conf')
 
+
 def can_reload(group_name):
     return DnsdbApi.can_reload(group_name)['data']
+
 
 def update_host_md5(named_conf_md5):
     try:
@@ -62,7 +67,7 @@ def get_named_md5():
     if _is_local_dns():
         res = re.findall('listen-on {[\s\d\.;]+};', content)[0]
         content = content.replace(res, '#localdns_listen_mark')
-    return md5(content).hexdigest()
+    return md5(content.encode('utf-8')).hexdigest()
 
 
 # 使用named-checkconf检查需要reload的配置文件
@@ -110,8 +115,8 @@ def update_named_conf(group_name):
     shutil.copy(new_name_path, to_use_file)
     # 如果是local dns  检查前先获取本机ip 将listen-on {ip};添加到option中
     if _is_local_dns():
-        status, output = commands.getstatusoutput(
-            "ip address | grep inet | awk '{print $2}' | awk -F '/' '{print $1}' | grep  -E '(^127\.|^192\.|^10\.)'")
+        output, status = os.system(
+            "ifconfig | grep inet | awk '{print $2}' | awk -F '/' '{print $1}' | grep  -E '(^127\.|^192\.|^10\.)'")
         iplist = [ip.strip() for ip in output.split('\n')]
         if len(iplist) <= 1:
             raise UpdaterErr('listen ip %s replace failed' % ','.join(iplist))
@@ -134,7 +139,6 @@ class UpdateConfThread(threading.Thread):
         self.group_name = kwargs['group_name']
         self.kwargs = kwargs
 
-
     def update_named(self):
         named_conf_md5 = get_named_md5()
         if named_conf_md5 == self.kwargs['group_conf_md5']:
@@ -142,18 +146,16 @@ class UpdateConfThread(threading.Thread):
         update_named_conf(self.group_name)
         return update_host_md5(self.kwargs['group_conf_md5'])
 
-
     def update_acl(self):
         acl_dir = _get_acl_dir()
         acl_files = self.kwargs.get('acl_files', [])
         filenames = {filename: os.path.join(acl_dir, filename) for filename in acl_files}
 
-        for acl_file, acl_path in filenames.iteritems():
+        for acl_file, acl_path in filenames.items():
             # 生成新的配置文件
             content = DnsdbApi.get_acl_content(acl_file)['data']
             with open('{}.tmp'.format(acl_path), 'w') as f:
                 f.write(content)
-
 
         # 重新加载配置
         if can_reload(self.group_name):
@@ -172,7 +174,7 @@ class UpdateConfThread(threading.Thread):
                 check_named_conf(_get_named_path())
             except UpdaterErr as e:
                 # 配置文件还原
-                for conf_file, back in tmp_conf_dict.iteritems():
+                for conf_file, back in tmp_conf_dict.items():
                     shutil.copy(back, conf_file)
                 raise
             reload_conf()
@@ -190,7 +192,6 @@ class UpdateConfThread(threading.Thread):
         checkzone(zone, tmp_zonefile_path)
         print(CONF.bind_conf.zone_dir)
         run_command_with_code('cp %s %s' % (tmp_zonefile_path, os.path.join(CONF.bind_conf.zone_dir, zonf_file)))
-
 
     def run(self):
         msg = ''

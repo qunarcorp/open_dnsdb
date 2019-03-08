@@ -21,7 +21,7 @@ import multiprocessing
 import sys
 
 from flask import Flask
-from oslo.config import cfg
+from oslo_config import cfg
 from werkzeug.serving import run_simple
 from werkzeug.wsgi import DispatcherMiddleware
 

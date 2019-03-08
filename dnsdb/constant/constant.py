@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from oslo.config import cfg
+from oslo_config import cfg
 CONF = cfg.CONF
 
 RE_PATTERN = {

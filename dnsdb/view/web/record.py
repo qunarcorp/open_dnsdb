@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
+import ipaddress
 
 from flask import (Blueprint)
 from flask_login import login_required
@@ -13,7 +14,8 @@ from dnsdb_common.library.decorators import resp_wrapper_json
 from dnsdb_common.library.exception import BadParam
 from dnsdb_common.library.utils import is_valid_cname
 from dnsdb_common.library.utils import is_valid_domain_name
-from dnsdb_common.library.utils import is_valid_ip_format
+from dnsdb_common.library.utils import format_ipv4
+from dnsdb_common.library.utils import format_ipv6
 
 bp = Blueprint('record', 'record')
 
@@ -47,22 +49,27 @@ def delete_record_log(result, **kwargs):
 def _validate_args(domain_name, param_dict):
     is_valid_domain_name(domain_name)
     if param_dict.get('ttl', 0) < 0:
-        raise BadParam("Invalid ttl.", msg_ch=u'ttl必须大于等于0')
+        raise BadParam("Invalid ttl.", msg_ch='ttl必须大于等于0')
     record_type = param_dict.get('record_type', None)
     if record_type:
         check_record = param_dict['check_record']
         record = param_dict['record']
         if record_type == 'CNAME':
             if domain_name == param_dict['record']:
-                raise BadParam("Self-CNAME is not allowed.", msg_ch=u'域名和CNAME不能相同')
+                raise BadParam("Self-CNAME is not allowed.", msg_ch='域名和CNAME不能相同')
             if check_record and not is_valid_cname(record):
-                raise BadParam('Invalid CNAME record', msg_ch=u'CNAME记录的zone必须在DNSDB管理中')
+                raise BadParam('Invalid CNAME record', msg_ch='CNAME记录的zone必须在DNSDB管理中')
         elif record_type == 'A':
-            is_valid_ip_format(record)
+            record = format_ipv4(record)
             if check_record and (not SubnetIpDal.is_ip_exist(record)):
-                raise BadParam('No such ip %s' % record, msg_ch=u'IP在数据库中不存在')
+                raise BadParam('No such ip %s' % record, msg_ch='IP在数据库中不存在')
+        elif record_type == 'AAAA':
+            record = format_ipv6(record)
+            if check_record and (not SubnetIpDal.is_ip_exist(record)):
+                raise BadParam('No such ip %s' % record, msg_ch='IP在数据库中不存在')
         else:
-            raise BadParam("Invalid record type.", msg_ch=u'记录类型只能是[A, CNAME]')
+            raise BadParam("Invalid record type.", msg_ch='记录类型只能是[A, CNAME]')
+        param_dict['record'] = record
 
 
 @bp.route('/manually_add_record', methods=['POST'])
@@ -77,7 +84,7 @@ def _validate_args(domain_name, param_dict):
 def manually_add_record(domain, record, record_type, ttl, username, check_record=True):
     update_dict = dict(record_type=record_type, record=record, check_record=check_record, ttl=ttl)
     _validate_args(domain, update_dict)
-    return ZoneRecordDal.add_record(domain, record, record_type, ttl, username)
+    return ZoneRecordDal.add_record(domain, update_dict['record'], record_type, ttl, username)
 
 
 @bp.route('/auto_add_record', methods=['POST'])

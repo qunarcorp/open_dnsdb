@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
 from dns_updater.utils.updater_util import *
 import time
 
@@ -31,12 +30,11 @@ def _build_PTR_records():
 
 # Get all the PTR zones which should be reload.
 def _get_modified_PTR_zones(mkrdns_output, zone_file_dict):
-    pgrep = sp.Popen(split("grep 'Updating file' " + mkrdns_output), stdout=sp.PIPE, stderr=sp.PIPE)
-    exit_code = pgrep.wait()
+    output, exit_code = run_command_with_code("grep 'Updating file' " + mkrdns_output, check_exit_code=False)
     if int(exit_code) != 0:
         log.info("No PTR zone needs to be reloaded.")
         return
-    for buf in StringIO.StringIO(pgrep.communicate()[0]):
+    for buf in io.StringIO(output):
         ptn = re.match('^Updating file "(%s/var/named/[^"]*)".*' %
                        TMP_DIR, buf)
         if ptn is not None:

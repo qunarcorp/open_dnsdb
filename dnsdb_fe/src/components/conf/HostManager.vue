@@ -499,6 +499,8 @@
             succStr: '保存成功'
           })
           this.namedConfLoading = false
+          this.namedConfDialogVisible = false
+          this.fetchHostGroupList()
         }).catch(() => { })
       },
 

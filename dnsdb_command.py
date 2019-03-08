@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
 import json
 import os
 import re
@@ -10,9 +9,9 @@ from flask_migrate import Migrate
 
 from dnsdb import createApp
 from dnsdb_common.dal import db
-from dnsdb_common.dal.user import UserDal
 from dnsdb_common.dal.models import *
-from dnsdb_common.library.IPy import IP
+from dnsdb_common.dal.user import UserDal
+from dnsdb_common.library.utils import format_subnet
 
 app = createApp(app_env=os.environ.get('FLASK_ENV', 'beta'), app_kind='dnsdb', conf_dir=os.path.abspath('.'))
 migrate = Migrate(app, db)
@@ -26,7 +25,7 @@ def parse_zone_conf(zone_conf, group_name):
 
     # 2 正解 0 反解 1机房
     zone_priority = 2
-    if 'ADDR' in zone_name:
+    if 'arpa' in zone_name.lower():
         zone_priority = 0
 
     # 机房zone
@@ -69,7 +68,7 @@ def parse_zone_file(zone_name, zone_file, user, only_a=False):
     """
     header_pattern = re.compile(r'\s(TXT|MX|SOA|NS)\s|\$ORIGIN|;|\)|^[\$@\*]|^[\s\d]+$')
     delete_pattern = re.compile(r'^(;.*)?$')
-    serial_pattern = re.compile(r'(\d+)(?=\s+; Serial)')
+    serial_pattern = re.compile(r'(\d+)(?=\s+; Serial)', flags=re.IGNORECASE)
 
     is_add = True
     record_mapping = []
@@ -125,7 +124,7 @@ def _check_subnet_overlap_subnet(subnets):
     subnets = sorted(subnets, key=lambda x: x[1])
     last_index = len(subnets) - 1
     overlap_subnets = []
-    for index, (subnet, start, end) in enumerate(subnets):
+    for index, (subnet, start, end, _) in enumerate(subnets):
         if index == last_index:
             break
         if end > subnets[index + 1][1]:
@@ -141,8 +140,8 @@ def parse_acl_file(file_name):
         for line in f:
             if ('ecs' in line) or ("{" in line) or ('}' in line) or ('#' in line):
                 continue
-            net = IP(split_pattern.split(line)[0])
-            subnets.append((str(net), net.ip, net.broadcast().int()))
+            net, is_ipv6, start_ip, end_ip = format_subnet(split_pattern.split(line)[0])
+            subnets.append((str(net), start_ip, end_ip, is_ipv6))
     overlap_subnets = _check_subnet_overlap_subnet(subnets)
     return overlap_subnets, subnets
 
@@ -159,6 +158,7 @@ def make_shell_context():
 @app.cli.command()
 def deploy():
     """Run deployment tasks."""
+    # db.drop_all()
     db.create_all()
     # create or update user roles
     db.session.begin(subtransactions=True)
@@ -277,7 +277,11 @@ def import_acl_subnet(acl_dir, user, add_overlap=True):
 
     isp_config = [
         # dict(name_in_english='chinanet', abbreviation='ct',
-        #      name_in_chinese=u'中国电信', acl_name='CHINANET', acl_file='CHINANET.acl', username=user)
+        #      name_in_chinese='中国电信', acl_name='CHINANET', acl_file='CHINANET.acl', username=user),
+        # dict(name_in_english='cmnet', abbreviation='cm',
+        #      name_in_chinese='中国移动', acl_name='CMNET', acl_file='CMNET.acl', username=user),
+        # dict(name_in_english='unicom', abbreviation='cu',
+        #      name_in_chinese='中国联通', acl_name='UNICOM', acl_file='UNICOM.acl', username=user),
     ]
 
     if isp_config:
@@ -306,14 +310,15 @@ def import_acl_subnet(acl_dir, user, add_overlap=True):
                 continue
 
         subnet_mapping = []
-        for subnet, start, end in subnets:
+        for subnet, start, end, is_ipv6 in subnets:
             subnet_mapping.append(dict(
                 subnet=subnet,
-                start=start,
-                end=end,
+                start_ip=start,
+                end_ip=end,
                 origin_acl=acl_name,
                 now_acl=acl_name,
-                update_user=user
+                update_user=user,
+                is_ipv6=is_ipv6
             ))
         with db.session.begin(subtransactions=True):
             db.session.bulk_insert_mappings(ViewAclSubnet, subnet_mapping)

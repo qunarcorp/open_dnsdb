@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-
-from __future__ import print_function
 from flask import (Blueprint)
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dns_updater.api.worker import start_update_thread
 from dns_updater.utils.updater_util import send_alarm_email

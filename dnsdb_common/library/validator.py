@@ -2,11 +2,6 @@
 
 import re
 
-try:
-    basestring
-except NameError:
-    basestring = (str, )
-
 def _match_pattern(pattern, string):
     ptn = re.search(r'(%s)' % pattern, string)
     if ptn is None:
@@ -30,7 +25,7 @@ def valid_string(s, min_len=None, max_len=None,
     """
     if s is None:
         return False, u'不能为None'
-    if not isinstance(s, basestring):
+    if not isinstance(s, str):
         return False, u"参数类型需要是字符串"
     if auto_trim:
         s = s.strip()
@@ -56,7 +51,7 @@ def valid_int(s, min_value=None, max_value=None):
     """
     if s is None:
         return False, "cannot is None"
-    if not isinstance(s, basestring):
+    if not isinstance(s, str):
         return False, "must a string value"
     s = int(s)
     if max_value is not None and s > max_value:

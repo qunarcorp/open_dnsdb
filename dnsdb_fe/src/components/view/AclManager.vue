@@ -237,7 +237,7 @@
         if (!this.checkSubnet()) {
           return false
         }
-        this.$confirm('是否添加网段' + this.addSubnetAcl, '提示', {
+        this.$confirm('是否添加网段' + this.addSubnet, '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'

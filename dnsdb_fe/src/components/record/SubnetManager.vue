@@ -2,9 +2,6 @@
   <div class="tab-panel">
     <div class="tab-panel">
       <el-row>
-        <el-col :span="8"><div class="grid-content">
-          <el-button size="large" style="display: inline-block;margin-left: 2px" @click="addSubnetVisible = true">新建子网</el-button>
-        </div></el-col>
         <el-col :span="16"><div class="grid-content">
           <el-select v-model="searchType" clearable size='large' placeholder="请选择">
             <el-option
@@ -18,6 +15,9 @@
                 @keyup.enter.native="searchGeneral"/>
           <el-button size="large" type="primary"  @click="searchGeneral">搜索</el-button>
         </div></el-col>
+        <el-col :span="8"><div class="grid-content">
+          <el-button size="large" style="display: inline-block;margin-left: 2px" @click="addSubnetVisible = true">新建子网</el-button>
+        </div></el-col>
       </el-row>
     </div>
     <hr />
@@ -29,22 +29,28 @@
       :data="subnetsList">
       <el-table-column prop="region_name"
                         label="区域"
-                        width="200px"
                         align="center"/>
       <el-table-column prop="subnet"
                         label="子网"
-                        width="250px"
                         align="center">
+      </el-table-column>
+      <el-table-column prop="intranet"
+                        label="类型"
+                        align="center">
+        <template slot-scope="scope">
+          <span v-if="scope.row.intranet">私网</span>
+          <span v-else>公网</span>
+        </template>
       </el-table-column>
       <el-table-column prop="create_user"
                         label="创建用户"
-                        width="200px"
                         align="center"/>
       <el-table-column prop="comment"
                         label="备注"
                         align="center"/>
       <el-table-column prop="operation"
                         label="操作"
+                        width="300px"
                         align="center">
         <template slot-scope="scope">
           <el-button type="info" size="small" :plain="true" @click="fetchSubnetIp(scope.row.region_name)">IP详情</el-button>

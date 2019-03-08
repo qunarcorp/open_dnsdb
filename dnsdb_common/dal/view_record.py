@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
 import json
 from collections import defaultdict
 
 import sqlalchemy
 from sqlalchemy import func
-from oslo.config import cfg
+from oslo_config import cfg
+import ipaddress
 
 from .models import DnsColo
 from .models import DnsSerial
@@ -16,34 +16,35 @@ from .models import ViewIsps
 from .models import ViewRecords
 from .models import DnsRecord
 from ..dal import db, commit_on_success
-from ..library.IPy import IP
 from ..library.exception import BadParam
 from ..library.log import setup, getLogger
-from ..library.utils import is_valid_domain_name, is_valid_ip_format
+from ..library.utils import is_valid_domain_name, format_ip
 from dnsdb.constant.constant import NORMAL_TO_CNAME, NORMAL_TO_VIEW, VIEW_ZONE
 
 setup("dnsdb")
 log = getLogger(__name__)
 
 CONF = cfg.CONF
+A_RECORDS = ('A', 'AAAA')
 
 
 def is_valid_view_ip(ip, room):
     from ..dal.subnet_ip import SubnetIpDal
-    is_valid_ip_format(ip)
+    if ('.' not in ip) and (':' not in ip):
+        raise BadParam('Invalid ip format: %s' % ip, msg_ch='机房 %s ip格式错误：%s' % (room, ip))
     try:
-        tmp = IP(ip)
+        tmp = ipaddress.ip_address(ip)
     except Exception:
-        raise BadParam('Invalid ip format: %s' % ip, msg_ch=u'机房 %s ip格式错误：%s' % (room, ip))
+        raise BadParam('Invalid ip format: %s' % ip, msg_ch='机房 %s ip格式错误：%s' % (room, ip))
     # 需要公网ip
-    if tmp.iptype() != 'PUBLIC':
-        raise BadParam('view ip should bu public: room %s ip %s' % (room, ip),
-                       msg_ch=u'view域名对应ip需为公网ip: 机房 %s ip %s' % (room, ip))
+    if tmp.is_private:
+        raise BadParam('view ip should be public: room %s ip %s' % (room, ip),
+                       msg_ch='view域名对应ip需为公网ip: 机房 %s ip %s' % (room, ip))
     # 机房ip检查
     colo = SubnetIpDal.get_region_by_ip(ip)['colo']
     if colo != room:
         raise BadParam('ip  %s belong to room %s, not %s' % (ip, colo, room),
-                       msg_ch=u'机房%s: ip %s 属于机房 %s' % (room, ip, colo))
+                       msg_ch='机房%s: ip %s 属于机房 %s' % (room, ip, colo))
     return True
 
 
@@ -52,7 +53,7 @@ def _validate_domain_args(domain_name, rooms, cnames):
     # Each cname and the name of the cname can appear only once.
     tmp = set()
     if cnames:
-        for name, cdn in cnames.iteritems():
+        for name, cdn in cnames.items():
             if (not name) or (not cdn) or (cdn == domain_name) or (not is_valid_domain_name(cdn)):
                 raise BadParam("cnames format wrong: %s: %s" % (name, cdn),
                                msg_ch=u'cdn参数格式错误%s: %s' % (name, cdn))
@@ -65,7 +66,7 @@ def _validate_domain_args(domain_name, rooms, cnames):
     # Each room and ip can appear only once.
     tmp.clear()
     if rooms:
-        for room, ips in rooms.iteritems():
+        for room, ips in rooms.items():
             if (not room) or (not ips) or (not isinstance(ips, list)):
                 raise BadParam("rooms format wrong: %s, %s" % (room, ips),
                                msg_ch=u'机房参数格式错误%s: %s' % (room, ips))
@@ -83,7 +84,7 @@ def _validate_domain_args(domain_name, rooms, cnames):
 def _need_reload_zone(active_record, rooms):
     need_reload = False
     update_rooms = {}
-    for room, ips in rooms.iteritems():
+    for room, ips in rooms.items():
         if len(ips) == 0:
             continue
         update_rooms[room] = ips
@@ -105,15 +106,18 @@ class ViewRecordDal(object):
     @staticmethod
     def create_view_domain(domain_name):
         if domain_name.endswith(VIEW_ZONE):
-            for k, v in NORMAL_TO_VIEW.iteritems():
+            for k, v in NORMAL_TO_VIEW.items():
                 if domain_name.endswith(v):
                     return domain_name, k
             raise BadParam('invalid domain', msg_ch=u'可用view域名后缀: %s' % NORMAL_TO_VIEW.values())
 
         normal_zone = ViewRecordDal.select_zone(domain_name)
+        if normal_zone is None:
+            raise BadParam('not zone for this domain: %s' % domain_name,
+                           msg_ch='dnsdb中没有域名可用zone')
         if normal_zone not in NORMAL_TO_VIEW:
             raise BadParam('invalid domain: %s' % domain_name,
-                           msg_ch=u'%s 不是可用普通域名后缀: %s' % (normal_zone, NORMAL_TO_VIEW.keys()))
+                           msg_ch=u'%s 不是可用普通域名后缀: %s' % (normal_zone, ','.join(NORMAL_TO_VIEW.keys())))
         return domain_name.replace(normal_zone, NORMAL_TO_VIEW[normal_zone]), normal_zone
 
     @staticmethod
@@ -157,7 +161,7 @@ class ViewRecordDal(object):
 
         record_dict = {}
         for record in ViewRecords.query.filter_by(domain_name=view_domain):
-            if record.record_type == 'A':
+            if record.record_type in A_RECORDS:
                 if record.property not in record_dict:
                     record_dict[record.property] = []
                 record_dict[record.property].append(record.record)
@@ -198,7 +202,8 @@ class ViewRecordDal(object):
         }
 
         for record in records:
-            if record.record_type == 'A':
+            record_type = record.record_type
+            if record_type in A_RECORDS:
                 room = record.property
                 room_info = room_confs[room]
                 if record.record not in room_info['ips']:
@@ -207,14 +212,14 @@ class ViewRecordDal(object):
                     if s.state == 'A' and room in json.loads(s.enabled_rooms):
                         room_info['isps'][s.isp] = True
                         room_info['is_enabled'] = True
-            elif record.record_type == 'CNAME':
+            elif record_type == 'CNAME':
                 for s in state_list:
                     if s.state.isdigit() and int(s.state) == int(record.id):
                         cdn_conf['isps'][s.isp]['name'] = record.property
                         cdn_conf['isps'][s.isp]['cname'] = record.record
             else:
-                raise BadParam("Unexepected record type:%s" % record.record_type,
-                               msg_ch=u'数据库中存在非[A CNAME]记录类型： %s' % record.record_type)
+                raise BadParam("Unexepected record type:%s" % record_type,
+                               msg_ch=u'数据库中存在非[A AAAA CNAME]记录类型： %s' % record_type)
 
         return {
             'domain_name': domain,
@@ -313,7 +318,7 @@ class ViewRecordDal(object):
     @commit_on_success
     def insert_view_record(domain_name, cnames, rooms, cname_zone):
         # CDN
-        for name, cdn in cnames.iteritems():
+        for name, cdn in cnames.items():
             record = ViewRecords.query.filter_by(domain_name=domain_name,
                                                  record=cdn).first()
             if record:
@@ -330,13 +335,14 @@ class ViewRecordDal(object):
                 ))
 
         # A
-        for room, ips in rooms.iteritems():
+        for room, ips in rooms.items():
             for ip in ips:
+                ip, version = format_ip(ip)
                 db.session.add(ViewRecords(
                     domain_name=domain_name,
                     ttl=60,
                     record=ip,
-                    record_type='A',
+                    record_type='A' if version == 4 else 'AAAA',
                     zone_name=cname_zone,
                     property=room
                 ))
@@ -344,7 +350,7 @@ class ViewRecordDal(object):
     @staticmethod
     @commit_on_success
     def _del_unused_cname(domain_name, cnames):
-        new_names = [(name, cdn) for name, cdn in cnames.iteritems()]
+        new_names = [(name, cdn) for name, cdn in cnames.items()]
         records = ViewRecords.query.filter_by(domain_name=domain_name, record_type='CNAME').all()
         for record in records:
             if (record.property, record.record) in new_names:
@@ -394,7 +400,7 @@ class ViewRecordDal(object):
             if domain_name.endswith(item):
                 break
         else:
-            raise BadParam('Invalid domain', msg_ch=u'可用的域名后缀: %s' % NORMAL_TO_VIEW.keys())
+            raise BadParam('Invalid domain', msg_ch=u'可用的域名后缀: %s' % ','.join(NORMAL_TO_VIEW.keys()))
         view_domain, normal_zone = ViewRecordDal.create_view_domain(domain_name)
         cname_zone = NORMAL_TO_CNAME[normal_zone]
 
@@ -433,7 +439,7 @@ class ViewRecordDal(object):
                     domain_name=view_domain,
                     isp=isp
                 ))
-            # 新增域名 更新dnsmaster2
+            # 新增域名 更新ViewMaster
             ViewRecordDal.increase_serial_num(VIEW_ZONE)
             # ViewRecordDal.increase_serial_num(cname_zone)
 
@@ -454,7 +460,7 @@ class ViewRecordDal(object):
             raise BadParam(message='room %s is using, can not delete', msg_ch=u'机房%s启用中，不能删除配置' % room)
 
         with db.session.begin(subtransactions=True):
-            records = ViewRecords.query.filter_by(domain_name=view_domain, record_type='A')
+            records = ViewRecords.query.filter_by(domain_name=view_domain).filter(ViewRecords.record_type.in_(A_RECORDS))
             for record in records:
                 db.session.delete(record)
 
@@ -488,13 +494,13 @@ class ViewRecordDal(object):
     def _check_update_state_args(isp_dict, domain_name):
         record_properties = set()
         for item in ViewRecords.query.filter_by(domain_name=domain_name):
-            if item.record_type == 'A':
+            if item.record_type in A_RECORDS:
                 record_properties.add(item.property)
 
         cur_state_list = (ViewDomainNameState.query.filter_by(domain_name=domain_name).all())
         cur_state_dict = {item.isp: item for item in cur_state_list}
 
-        for isp, conf in isp_dict.iteritems():
+        for isp, conf in isp_dict.items():
             state = cur_state_dict.get(isp, None)
             if not state:
                 raise BadParam('Domain %s has no state record for isp: %s' % (domain_name, isp),
@@ -515,7 +521,7 @@ class ViewRecordDal(object):
                 raise BadParam('rooms and cdn both null for isp %s' % isp, msg_ch=u'运营商%s无启用配置' % isp)
 
         need_update_isp = set()
-        for isp, item in cur_state_dict.iteritems():
+        for isp, item in cur_state_dict.items():
             state = item.state
             if state == "disabled":
                 need_update_isp.add(isp)

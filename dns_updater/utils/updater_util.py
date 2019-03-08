@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import StringIO
+import io
 import json
 import os
 import re
@@ -10,17 +10,14 @@ import subprocess as sp
 from datetime import datetime
 from shlex import split
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dnsdb_common.library.api import Api
 from dnsdb_common.library.email_util import send_email
 from dnsdb_common.library.exception import UpdaterErr
 from dnsdb_common.library.log import getLogger
 
-try:
-    long  # Python 2
-except NameError:
-    long = int  # Python 3
+long = int  # Python 3
 
 log = getLogger(__name__)
 
@@ -33,11 +30,13 @@ def run_command_with_code(cmd, check_exit_code=True):
     Returns the output of that command. Working directory is self.root.
     """
 
-    proc = sp.Popen(cmd, stdout=sp.PIPE, stderr=sp.PIPE)
+    proc = sp.Popen(split(cmd), stdout=sp.PIPE, stderr=sp.PIPE, encoding='utf-8')
     output = proc.communicate()[0]
-    if check_exit_code and proc.returncode != 0:
-        raise UpdaterErr('Command "%s" failed.\n%s' % (' '.join(cmd), output))
-    return output, proc.returncode
+    retcode = proc.returncode
+    if check_exit_code and retcode != 0:
+        raise UpdaterErr('Command "%s" failed.\n%s' % (cmd, output))
+    log.info('Command "%s" success.' % ' '.join(cmd))
+    return output, retcode
 
 
 def get_self_ip():
@@ -143,35 +142,15 @@ def check_file_exists(filepath):
 
 
 def get_file_diff(src, dst):
-    diff = sp.Popen(split("diff -u %s %s" % (src, dst)), stdout=sp.PIPE, stderr=sp.PIPE)
-    output = diff.communicate()
-    retcode = diff.returncode
+    output, retcode = run_command_with_code("diff -u %s %s" % (src, dst), check_exit_code=False)
     if retcode is None or retcode == 0:
         return ''
-    return output[0]
+    return output
 
 
 def get_named_path():
     named_dir = CONF.bind_conf.named_dir
     return os.path.join(named_dir, 'named.conf')
-
-
-def run_command_with_code(cmd, redirect_output=True,
-                          check_exit_code=True):
-    """Runs a command in an out-of-process shell.
-
-    Returns the output of that command. Working directory is self.root.
-    """
-    if redirect_output:
-        stdout = sp.PIPE
-    else:
-        stdout = None
-
-    proc = sp.Popen(split(cmd), stdout=stdout, stderr=sp.PIPE)
-    output = proc.communicate()[0]
-    if check_exit_code and proc.returncode != 0:
-        log.error('Command "%s" failed.\n%s', cmd, output)
-    return output, proc.returncode
 
 
 def backup_file(file_type, file_path):
@@ -201,7 +180,7 @@ def make_zone_file(zone, filename, serial, header, record_list):
     try:
         with open(filename, 'w') as f:
             f.writelines(header)
-        run_command_with_code('sed -i "" "s/pre_serial/%s/" %s' % (str(serial), filename))
+        run_command_with_code('sed -i "s/pre_serial/%s/" %s' % (str(serial), filename))
 
         with open(filename, 'a') as f:
             for item in record_list:
@@ -232,10 +211,7 @@ def make_zone_file_from_dnsdb(zone):
 
 
 def is_file_changed_too_much(src, dst):
-    diff = sp.Popen(split("diff %s %s" % (src, dst)),
-                    stdout=sp.PIPE, stderr=sp.PIPE)
-    output = diff.communicate()
-    retcode = diff.returncode
+    output, retcode = run_command_with_code("diff %s %s" % (src, dst), check_exit_code=False)
     if retcode is None:
         log.error("CRITICAL, retcode is NONE.")
         return True
@@ -244,7 +220,7 @@ def is_file_changed_too_much(src, dst):
         return False
     counter = 0
     threshold = CONF.etc.threshold
-    for buf in StringIO.StringIO(output[0]):
+    for buf in io.StringIO(output):
         counter = counter + 1
     if counter > threshold:
         log.info("Too many changes made to %s" % src)
@@ -254,11 +230,7 @@ def is_file_changed_too_much(src, dst):
 
 
 def _get_serial_from_zone_file(path):
-    pgrep = sp.Popen(split("grep -i 'serial' %s" % path), stdout=sp.PIPE, stderr=sp.PIPE)
-    exit_code = pgrep.wait()
-    if int(exit_code) != 0:
-        raise UpdaterErr("Unable to grep serial line.")
-    grep_ouput = pgrep.communicate()[0]
+    grep_ouput, exit_code = run_command_with_code("grep -i 'serial' %s" % path)
     pattern = re.match('^[^\d]*(\d*).*', grep_ouput)
     if pattern is None:
         raise UpdaterErr("Unable grep serial.")
@@ -305,9 +277,9 @@ def send_changes_to_opsteam(src, dst):
 
 
 def reload_and_backup_zones(zone_file_dict):
-    for zone, file_info in zone_file_dict.iteritems():
+    for zone, file_info in zone_file_dict.items():
         if os.system("cp -f %s %s >/dev/null 2>&1" % (file_info['src'], file_info['dst'])) != 0:
-            raise UpdaterErr("Failed to copy file: %s" % file_info['src'])
+            raise UpdaterErr("Failed to copy file: src: %s, dst: %s" % (file_info['src'], file_info['dst']))
 
         if CONF.etc.env != 'dev':
             rndc_debugfile = make_debugfile_path("rndc")

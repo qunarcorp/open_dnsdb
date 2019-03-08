@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
 
-from flask_login import current_user
-from oslo.config import cfg
-from dnsdb.deploy import start_deploy_job
+import ipaddress
 
+from flask_login import current_user
+from oslo_config import cfg
+
+from dnsdb.deploy import start_deploy_job
 from . import commit_on_success
 from . import db
 from .models import ViewAclSubnet
 from .models import ViewIsps
 from ..dal.host_group_conf import HostGroupConfDal
-from ..library.IPy import IP
 from ..library.exception import BadParam
+from ..library.utils import format_subnet, get_ip_int_str
 
 CONF = cfg.CONF
 
@@ -65,12 +67,14 @@ class ViewIspAclDal(object):
     def list_acl_subnet_by_ip(ip):
         # ip格式校验
         try:
-            int_ip = IP(ip).ip
+            ip = ipaddress.ip_address(ip)
         except:
             raise BadParam('invalid ip: %s' % ip, msg_ch=u'错误的ip格式')
-
-        items = ViewAclSubnet.query.filter(ViewAclSubnet.start <= int_ip).filter(
-            ViewAclSubnet.end >= int_ip).order_by(ViewAclSubnet.start)
+        is_ipv6 = ip.version == 6
+        int_ip = float(int(ip))
+        items = (ViewAclSubnet.query.filter(ViewAclSubnet.start_ip <= int_ip,
+                                            ViewAclSubnet.end_ip >= int_ip,
+                                            ViewAclSubnet.is_ipv6 == is_ipv6).order_by(ViewAclSubnet.start_ip))
         return [item.json_serialize() for item in items]
 
     @staticmethod
@@ -79,44 +83,38 @@ class ViewIspAclDal(object):
                 for item in ViewAclSubnet.query.filter(ViewAclSubnet.origin_acl != ViewAclSubnet.now_acl)]
 
     @staticmethod
-    @commit_on_success
     def add_acl_subnet(subnet, acl, username):
         if not ViewIsps.query.filter_by(acl_name=acl).first():
             raise BadParam('acl not in database: %s' % acl, msg_ch=u'ACL在dnsdb中无记录')
-        try:
-            subnet_obj = IP(subnet)
-        except:
-            raise BadParam('invalid subnet: %s' % subnet, msg_ch=u'网段格式错误: %s' % subnet)
-        subnet = str(subnet_obj)
-        start_ip = subnet_obj.ip
-        end_ip = subnet_obj.broadcast().int()
 
-        q1 = (ViewAclSubnet.query.filter_by(origin_acl=acl).
-              filter(ViewAclSubnet.start <= start_ip).filter(ViewAclSubnet.end >= start_ip).first())
+        subnet, is_ipv6, start_ip, end_ip = format_subnet(subnet)
+
+        q1 = (ViewAclSubnet.query.filter_by(origin_acl=acl, is_ipv6=is_ipv6).
+              filter(ViewAclSubnet.start_ip <= start_ip).filter(ViewAclSubnet.end_ip >= start_ip).first())
         q2 = (ViewAclSubnet.query.filter_by(origin_acl=acl).
-              filter(ViewAclSubnet.start <= end_ip).filter(ViewAclSubnet.end >= end_ip).first())
+              filter(ViewAclSubnet.start_ip <= end_ip).filter(ViewAclSubnet.end_ip >= end_ip).first())
         if q1 or q2:
             raise BadParam('subnet overlap with subnet in this acl', msg_ch=u'与运营商中已有网段交叉')
-
-        db.session.add(ViewAclSubnet(
+        with db.session.begin(subtransactions=True):
+            db.session.add(ViewAclSubnet(
                 subnet=subnet,
-                start=start_ip,
-                end=end_ip,
+                start_ip=start_ip,
+                end_ip=end_ip,
                 origin_acl=acl,
                 now_acl=acl,
-                update_user=username
+                update_user=username,
+                is_ipv6=is_ipv6
             ))
         start_acl_deploy_job(username, [acl])
 
     @staticmethod
-    @commit_on_success
     def delete_acl_subnet(subnet_id, username):
         subnet = ViewAclSubnet.query.filter_by(id=subnet_id).first()
         if not subnet:
             raise BadParam('No such acl subnet record: %s' % subnet_id, msg_ch=u'没有对应的网段记录')
-        db.session.delete(subnet)
+        with db.session.begin(subtransactions=True):
+            db.session.delete(subnet)
         subnet_info = subnet.json_serialize(include=['subnet', 'origin_acl', 'now_acl'])
-
         origin = subnet_info['origin_acl']
         now = subnet_info['now_acl']
         start_acl_deploy_job(username, [now] if now == origin else [now, origin])

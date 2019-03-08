@@ -170,9 +170,62 @@ var objArrayToOptions = function (array, label, value) {
   return options
 }
 
-var isValidIP = function (ip) {
+// check whether every char of the str is a Hex char(0~9,a~f,A~F)
+var isHex = function (str) {
+  var reg = /^[0-9A-Fa-f]{1,4}$/
+  return reg.test(str)
+}
+
+var isValidIpv6 = function (ip) {
+  ip = ip.trim()
+  var idx = ip.indexOf('::')
+  // there is no "::" in the ip address
+  if (idx < 0) {
+    let items = ip.split(':')
+    if (items.length !== 8) {
+      return false
+    }
+    for (let tag of items) {
+      if (!isHex(tag)) {
+        return false
+      }
+    }
+    return true
+  } else {
+    // The "::" can only appear once in an address
+    if (idx !== ip.lastIndexOf('::')) {
+      return false
+    }
+    if (ip.split(':').length > 8) {
+      return false
+    }
+    var items = ip.split('::')
+    for (let tags of items) {
+      if (!tags) {
+        continue
+      }
+      for (let tag of tags.split(':')) {
+        if (!isHex(tag)) {
+          return false
+        }
+      }
+    }
+    return true
+  }
+}
+
+var isValidIpv4 = function (ip) {
+  ip = ip.trim()
   var reg = /^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])(\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])){3}$/
   return reg.test(ip)
+}
+
+var isValidIP = function (ip) {
+  if (ip.indexOf(':') > 0) {
+    return isValidIpv6(ip)
+  } else {
+    return isValidIpv4
+  }
 }
 
 var isValidDomain = function (domain) {
@@ -192,5 +245,7 @@ export default {
   objArrayToOptions,
   objToOptions,
   isValidIP,
+  isValidIpv6,
+  isValidIpv4,
   isValidDomain
 }

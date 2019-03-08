@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 
-from __future__ import print_function
 from flask import (abort, Blueprint)
 from flask import render_template, url_for
 from flask_login import login_required

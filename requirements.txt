@@ -1,16 +1,16 @@
-ConcurrentLogHandler==0.9.1
-Flask-RESTful==0.3.6
+concurrent-log-handler==0.9.12
 Flask==1.0.2
+Flask-Login==0.4.1
+Flask-Migrate==2.4.0
+Flask-RESTful==0.3.7
 Flask-SQLAlchemy==2.3.2
-httplib2 == 0.9.1
-jsonschema==2.6.0
-oslo.config == 1.4.0
-ping==0.2
-sqlalchemy == 1.0.12
-requests == 2.20.1
-sphinx == 1.8.2
-sphinx-rtd-theme == 0.4.2
-flask-login==0.4.1
-flask-migrate==2.3.1
-gunicorn==19.5.0
+httplib2==0.12.1
+jsonschema==3.0.1
+oslo.config==6.8.1
+multiping==1.1.2
+SQLAlchemy==1.2.18
+requests==2.21.0
+Sphinx==1.8.4
+sphinx-rtd-theme==0.4.3
+gunicorn==19.9.0
 eventlet==0.24.1
