@@ -6,7 +6,7 @@ import sys
 from flask import (Flask, render_template)
 from flask_restful import abort
 from jinja2 import TemplateNotFound
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dns_updater.config import setup_config
 from dnsdb_common.library.gunicorn_app import GunicornApplication, number_of_workers

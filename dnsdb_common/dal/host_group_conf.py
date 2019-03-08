@@ -5,7 +5,7 @@ import tempfile
 from collections import OrderedDict
 from hashlib import md5
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from . import db, commit_on_success
 from .models import DnsHeader
@@ -23,7 +23,7 @@ CONF = cfg.CONF
 
 def start_named_deploy(username, group_md5_conf):
     unfinished = []
-    for group, info in group_md5_conf.iteritems():
+    for group, info in group_md5_conf.items():
         unfinished.extend(info['hosts'])
     job_id = start_deploy_job(username, group_md5_conf, 'named.conf', unfinished)
     return job_id
@@ -34,7 +34,7 @@ def start_zone_header_deploy(user, group, zone_name, conf_type='zone'):
 
     return start_deploy_job(user, deploy_info, conf_type, hosts)
 
-class HostGroupConfDal(object):
+class HostGroupConfDal:
     @staticmethod
     def check_host(hostname, ip):
         is_valid_domain_name(hostname)
@@ -200,7 +200,7 @@ class HostGroupConfDal(object):
             if item.zone_name not in zone_dict:
                 zone_dict[item.zone_name] = []
             zone_dict[item.zone_name].append(item.zone_group)
-        return [{'zone_name': k, 'zone_group': v} for k, v in zone_dict.iteritems()]
+        return [{'zone_name': k, 'zone_group': v} for k, v in zone_dict.items()]
 
     @staticmethod
     def get_named_zone(zone_name):
@@ -250,7 +250,7 @@ class HostGroupConfDal(object):
             raise BadParam('zone must and can only exist in one Master group', msg_ch=u'zone能且只能存在于一组master主机中')
         master_group = master_groups[0]
         with db.session.begin(subtransactions=True):
-            for group, zone_conf in conf_dict.iteritems():
+            for group, zone_conf in conf_dict.items():
                 HostGroupConfDal.check_zone_conf(group, zone_name, zone_conf)
                 db.session.add(DnsZoneConf(zone_name=zone_name,
                                            zone_conf=zone_conf,
@@ -296,7 +296,7 @@ class HostGroupConfDal(object):
         for group in delete_groups:
             DnsZoneConf.query.filter_by(zone_name=zone_name, zone_group=group).delete()
         update_group = set()
-        for group, zone_conf in conf_dict.iteritems():
+        for group, zone_conf in conf_dict.items():
             HostGroupConfDal.check_zone_conf(group, zone_name, zone_conf)
             if group not in before_conf:
                 update_group.add(group)

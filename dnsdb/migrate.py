@@ -2,7 +2,7 @@
 
 import threading
 import json
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dnsdb import get_flask_app
 from dnsdb.constant.constant import NORMAL_TO_CNAME
@@ -49,7 +49,7 @@ def migrate_rooms(src_rooms, dst_rooms, to_migrate_isps, username):
     migrate_isp_domains = MigrateDal.list_migrate_domain_by_isp(to_migrate_dict, dst_rooms)
 
     has_migrate_domains = False
-    for isp, migrate_domains_list in migrate_isp_domains.iteritems():
+    for isp, migrate_domains_list in migrate_isp_domains.items():
         migrate_domains_list = [domain for domain in migrate_domains_list if domain['after_enabled_rooms']]
         if len(migrate_domains_list) == 0:
             continue

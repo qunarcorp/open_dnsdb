@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from flask_login import current_user
-from oslo.config import cfg
+from oslo_config import cfg
 from dnsdb.deploy import start_deploy_job
 
 from . import commit_on_success

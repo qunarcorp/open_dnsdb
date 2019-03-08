@@ -8,7 +8,7 @@ import re
 import socket
 from importlib import import_module
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dnsdb_common.dal import db
 from dnsdb_common.dal.models import DnsHeader
@@ -16,10 +16,6 @@ from dnsdb_common.dal.models import DnsSerial
 from dnsdb_common.library.exception import DnsdbException, BadParam
 from dnsdb_common.library.log import getLogger
 
-try:
-    basestring     # Python 2
-except NameError:  # Python 3
-    basestring = (str, )
 
 log = getLogger(__name__)
 
@@ -46,7 +42,7 @@ def is_valid_domain_name_v2(domain_name):
     if len(domain_name) > 256:
         raise BadParam("Domain name %s is too long." % domain_name, msg_ch=u'域名长度需小于256')
     if len(domain_name.split(".")) < 2:
-        raise BadParam("not enough level:%s" % domain_name)
+        raise BadParam("not enough level:%s" % domain_name, msg_ch=u'域名至少是一个二级域名')
     if re.match("^(\*\.)?([0-9a-zA-Z][-0-9a-zA-Z]{0,63}\.)+[a-z]{0,63}$", domain_name) is None or domain_name.find(
             "-.") != -1:
         raise BadParam("Invalid formation:%s" % domain_name, msg_ch=u'域名中只能包含[-.0-9a-zA-Z], %s' % domain_name)
@@ -83,7 +79,7 @@ def is_valid_ip_bysocket(ip):
 
 
 def is_string(s):
-    return isinstance(s, basestring)
+    return isinstance(s, str)
 
 
 def select_best_matched_domain(db, domain_name):
@@ -142,7 +138,7 @@ def is_valid_cname(cname):
 
 def get_dict_from_table(obj):
     res = {}
-    for k, v in obj.__dict__.iteritems():
+    for k, v in obj.__dict__.items():
         if not k.startswith('_'):
             res[k] = v.strftime('%Y-%m-%d %H:%M:%S') if isinstance(v, datetime.datetime) else v
     return res

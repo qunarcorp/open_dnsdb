@@ -4,7 +4,7 @@ import sys
 import threading
 from Queue import Queue
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dnsdb_common.library.log import getLogger, setup
 from dnsdb_common.library.exception import UpdaterErr

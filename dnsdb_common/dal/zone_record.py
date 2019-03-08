@@ -6,8 +6,8 @@ import re
 import tempfile
 from hashlib import md5
 
-from oslo.config import cfg
-from ping import quiet_ping
+from multiping import multi_ping
+from oslo_config import cfg
 
 from dnsdb.constant.constant import NORMAL_TO_CNAME, VIEW_ZONE, NORMAL_TO_VIEW
 from . import commit_on_success
@@ -27,11 +27,11 @@ log = getLogger(__name__)
 
 CONF = cfg.CONF
 
+VIEW_TO_CNAME = {NORMAL_TO_VIEW[zone]: cname_zone for zone, cname_zone in NORMAL_TO_CNAME.items()}
 
-VIEW_TO_CNAME = {NORMAL_TO_VIEW[zone]: cname_zone for zone, cname_zone in NORMAL_TO_CNAME.iteritems()}
 
 def _make_glbs_cname(domain, abbr):
-    for zone, cname_zone in VIEW_TO_CNAME.iteritems():
+    for zone, cname_zone in VIEW_TO_CNAME.items():
         if domain.endswith('.' + zone):
             return '%s.%s.%s' % (domain.replace('.' + zone, ''), abbr, cname_zone)
     raise BadParam('Domain name format wrong: %s' % domain)
@@ -307,13 +307,14 @@ class ZoneRecordDal(object):
 
         for item in records:
             ip = item.fixed_ip
-            # By sending 8 icmp packets with 64 bytes to this ip within 0.1 second,
-            # we can probably make sure if an ip is alive.
-            # If this ip does not answer any pings in 0.2 second, it will be presumed to be unused.
-            if CONF.etc.env != 'dev' and quiet_ping(ip, 0.1, 8, 64)[0] != 100:
-                IpPool.query.filter_by(fixed_ip=ip).update({'allocated': False})
-                log.error("%s should have been set allocated=False since it is ping-able." % ip)
-                continue
+            if CONF.etc.env != 'dev':
+                responses, no_responses = multi_ping([ip], timeout=0.2, retry=2,
+                                                   ignore_lookup_errors=True)
+                # 如果ping成功，那么ip不可用于自动分配
+                if not no_responses:
+                    IpPool.query.filter_by(fixed_ip=ip).update({'allocated': False})
+                    log.error("%s should have been set allocated=False since it is ping-able." % ip)
+                    continue
             with db.session.begin(subtransactions=True):
                 try:
                     iprecord = IpPool.query.filter_by(fixed_ip=ip).with_for_update(nowait=True, of=IpPool)

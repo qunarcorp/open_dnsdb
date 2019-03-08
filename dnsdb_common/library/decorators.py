@@ -8,17 +8,13 @@ from functools import wraps
 from flask import request, Response
 from flask_login import current_user
 from flask_restful import reqparse, abort
-from oslo.config import cfg
+from oslo_config import cfg
 
 from ..dal.operation_log import OperationLogDal
 from ..library.exception import DnsdbException
 from ..library.log import getLogger
 from ..library.param_validator import ParamValidator
 
-try:
-    basestring     # Python 2
-except NameError:  # Python 3
-    basestring = (str, )
 
 CONF = cfg.CONF
 log = getLogger(__name__)
@@ -108,9 +104,6 @@ resp_wrapper_json = resp_wrapper(is_json=True)
 
 
 def parse_params(param_meta=None, need_username=False):
-    # @parse_params([dict(name='username', type=str, required=True, nullable=False),
-    #               dict(name='password', type=str, required=True, nullable=False)],
-    #               need_username=False)
     parser = reqparse.RequestParser()
     param_meta = [] if param_meta is None else param_meta
     for kw in param_meta:
@@ -120,11 +113,11 @@ def parse_params(param_meta=None, need_username=False):
         @wraps(func)
         def _wrapper(*args, **kwargs):
             params = parser.parse_args()
-            for k in params.keys():
+            for k in list(params.keys()):
                 v = params[k]
                 if v is None:
                     params.pop(k)
-                if isinstance(v, basestring):
+                if isinstance(v, str):
                     params[k] = v.strip()
 
             kwargs.update(params)

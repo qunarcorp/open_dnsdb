@@ -6,7 +6,7 @@ from collections import defaultdict
 
 import sqlalchemy
 from sqlalchemy import func
-from oslo.config import cfg
+from oslo_config import cfg
 
 from .models import DnsColo
 from .models import DnsSerial
@@ -52,7 +52,7 @@ def _validate_domain_args(domain_name, rooms, cnames):
     # Each cname and the name of the cname can appear only once.
     tmp = set()
     if cnames:
-        for name, cdn in cnames.iteritems():
+        for name, cdn in cnames.items():
             if (not name) or (not cdn) or (cdn == domain_name) or (not is_valid_domain_name(cdn)):
                 raise BadParam("cnames format wrong: %s: %s" % (name, cdn),
                                msg_ch=u'cdn参数格式错误%s: %s' % (name, cdn))
@@ -65,7 +65,7 @@ def _validate_domain_args(domain_name, rooms, cnames):
     # Each room and ip can appear only once.
     tmp.clear()
     if rooms:
-        for room, ips in rooms.iteritems():
+        for room, ips in rooms.items():
             if (not room) or (not ips) or (not isinstance(ips, list)):
                 raise BadParam("rooms format wrong: %s, %s" % (room, ips),
                                msg_ch=u'机房参数格式错误%s: %s' % (room, ips))
@@ -83,7 +83,7 @@ def _validate_domain_args(domain_name, rooms, cnames):
 def _need_reload_zone(active_record, rooms):
     need_reload = False
     update_rooms = {}
-    for room, ips in rooms.iteritems():
+    for room, ips in rooms.items():
         if len(ips) == 0:
             continue
         update_rooms[room] = ips
@@ -105,7 +105,7 @@ class ViewRecordDal(object):
     @staticmethod
     def create_view_domain(domain_name):
         if domain_name.endswith(VIEW_ZONE):
-            for k, v in NORMAL_TO_VIEW.iteritems():
+            for k, v in NORMAL_TO_VIEW.items():
                 if domain_name.endswith(v):
                     return domain_name, k
             raise BadParam('invalid domain', msg_ch=u'可用view域名后缀: %s' % NORMAL_TO_VIEW.values())
@@ -313,7 +313,7 @@ class ViewRecordDal(object):
     @commit_on_success
     def insert_view_record(domain_name, cnames, rooms, cname_zone):
         # CDN
-        for name, cdn in cnames.iteritems():
+        for name, cdn in cnames.items():
             record = ViewRecords.query.filter_by(domain_name=domain_name,
                                                  record=cdn).first()
             if record:
@@ -330,7 +330,7 @@ class ViewRecordDal(object):
                 ))
 
         # A
-        for room, ips in rooms.iteritems():
+        for room, ips in rooms.items():
             for ip in ips:
                 db.session.add(ViewRecords(
                     domain_name=domain_name,
@@ -344,7 +344,7 @@ class ViewRecordDal(object):
     @staticmethod
     @commit_on_success
     def _del_unused_cname(domain_name, cnames):
-        new_names = [(name, cdn) for name, cdn in cnames.iteritems()]
+        new_names = [(name, cdn) for name, cdn in cnames.items()]
         records = ViewRecords.query.filter_by(domain_name=domain_name, record_type='CNAME').all()
         for record in records:
             if (record.property, record.record) in new_names:
@@ -494,7 +494,7 @@ class ViewRecordDal(object):
         cur_state_list = (ViewDomainNameState.query.filter_by(domain_name=domain_name).all())
         cur_state_dict = {item.isp: item for item in cur_state_list}
 
-        for isp, conf in isp_dict.iteritems():
+        for isp, conf in isp_dict.items():
             state = cur_state_dict.get(isp, None)
             if not state:
                 raise BadParam('Domain %s has no state record for isp: %s' % (domain_name, isp),
@@ -515,7 +515,7 @@ class ViewRecordDal(object):
                 raise BadParam('rooms and cdn both null for isp %s' % isp, msg_ch=u'运营商%s无启用配置' % isp)
 
         need_update_isp = set()
-        for isp, item in cur_state_dict.iteritems():
+        for isp, item in cur_state_dict.items():
             state = item.state
             if state == "disabled":
                 need_update_isp.add(isp)

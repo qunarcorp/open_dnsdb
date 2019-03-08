@@ -42,7 +42,7 @@ import traceback
 import json
 
 import six
-from oslo.config import cfg
+from oslo_config import cfg
 from six import moves
 from ..library import local
 

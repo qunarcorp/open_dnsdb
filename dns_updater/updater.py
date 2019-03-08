@@ -7,7 +7,7 @@ import signal
 import sys
 import time
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dns_updater.config import setup_config
 from dns_updater.utils.tool_classes import (QApplication)
@@ -58,7 +58,7 @@ def _check_necessary_options():
         'MAIL': ['from_addr', 'server', 'port', 'info_list', 'alert_list'],
     }
 
-    for section, options in needed_conf_options.iteritems():
+    for section, options in needed_conf_options.items():
         if not hasattr(CONF, section):
             raise UpdaterErr(message=section + " section not found.")
 

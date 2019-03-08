@@ -10,7 +10,7 @@ import subprocess as sp
 from datetime import datetime
 from shlex import split
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dnsdb_common.library.api import Api
 from dnsdb_common.library.email_util import send_email
@@ -305,7 +305,7 @@ def send_changes_to_opsteam(src, dst):
 
 
 def reload_and_backup_zones(zone_file_dict):
-    for zone, file_info in zone_file_dict.iteritems():
+    for zone, file_info in zone_file_dict.items():
         if os.system("cp -f %s %s >/dev/null 2>&1" % (file_info['src'], file_info['dst'])) != 0:
             raise UpdaterErr("Failed to copy file: %s" % file_info['src'])
 

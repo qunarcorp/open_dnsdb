@@ -8,7 +8,7 @@ import shutil
 import threading
 from hashlib import md5
 
-from oslo.config import cfg
+from oslo_config import cfg
 
 from dns_updater.utils.updater_util import DnsdbApi
 from dns_updater.utils.updater_util import send_alarm_email
@@ -148,7 +148,7 @@ class UpdateConfThread(threading.Thread):
         acl_files = self.kwargs.get('acl_files', [])
         filenames = {filename: os.path.join(acl_dir, filename) for filename in acl_files}
 
-        for acl_file, acl_path in filenames.iteritems():
+        for acl_file, acl_path in filenames.items():
             # 生成新的配置文件
             content = DnsdbApi.get_acl_content(acl_file)['data']
             with open('{}.tmp'.format(acl_path), 'w') as f:
@@ -172,7 +172,7 @@ class UpdateConfThread(threading.Thread):
                 check_named_conf(_get_named_path())
             except UpdaterErr as e:
                 # 配置文件还原
-                for conf_file, back in tmp_conf_dict.iteritems():
+                for conf_file, back in tmp_conf_dict.items():
                     shutil.copy(back, conf_file)
                 raise
             reload_conf()

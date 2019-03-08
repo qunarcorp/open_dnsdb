@@ -34,7 +34,7 @@ def delete_view_domain_log(result, domain_name):
 
 def update_view_state_log(result, domain_name, isps):
     after = {}
-    for isp, conf in isps.iteritems():
+    for isp, conf in isps.items():
         after[isp] = {}
         if 'rooms' in conf:
             after[isp] = conf['rooms']

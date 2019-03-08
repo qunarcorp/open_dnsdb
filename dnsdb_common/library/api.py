@@ -3,7 +3,7 @@
 import json
 
 import requests
-from oslo.config import cfg
+from oslo_config import cfg
 from requests.auth import HTTPBasicAuth
 
 from .exception import DnsdbException

@@ -17,7 +17,7 @@ def _make_zone_file_from_dnsdb(zone):
     header = zone_info['header']
 
     isp_file_dict = {}
-    for isp,  record_list in record_dict.iteritems():
+    for isp,  record_list in record_dict.items():
         tmp_dir = os.path.join(CONF.etc.tmp_dir, 'var/named', isp)
         make_dir(tmp_dir)
         tmp_zonefile_path = os.path.join(tmp_dir, zone)
@@ -37,7 +37,7 @@ def _backup_debug_file(debug_file):
 
 
 def _copy_and_reload(isp_file_dict, zone):
-    for isp, file_info in isp_file_dict.iteritems():
+    for isp, file_info in isp_file_dict.items():
         if os.system("cp -f %s %s >/dev/null 2>&1" % (file_info['src'], file_info['dst'])) != 0:
             raise UpdaterErr("Failed to copy file: %s" % file_info['src'])
         backup_file(isp, file_info['src'])
@@ -53,7 +53,7 @@ def _copy_and_reload(isp_file_dict, zone):
 
 def _send_all_changes_to_opsteam(isp_file_dict):
     diff_content = ''
-    for isp, files in isp_file_dict.iteritems():
+    for isp, files in isp_file_dict.items():
         diff = get_file_diff(files['dst'], files['src'])
         if diff:
             diff_content += diff + "\n"*3
