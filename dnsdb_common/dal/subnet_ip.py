@@ -2,6 +2,7 @@
 import ipaddress
 
 from dnsdb_common.library.exception import BadParam
+from dnsdb_common.library.utils import format_ip
 from . import commit_on_success
 from . import db
 from .models import DnsColo
@@ -26,6 +27,7 @@ class SubnetIpDal(object):
 
     @staticmethod
     def get_region_by_ip(ip):
+        ip, _ = format_ip(ip)
         record = IpPool.query.filter_by(fixed_ip=ip).first()
         if not record:
             raise BadParam('no such ip: %s' % ip, msg_ch=u'没有对应的ip记录')

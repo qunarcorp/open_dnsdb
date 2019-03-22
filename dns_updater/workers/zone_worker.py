@@ -79,7 +79,7 @@ def handler():
 
             mkrdns_output = _build_PTR_records()
             _get_modified_PTR_zones(mkrdns_output, zone_file_dict)
-            log.info('Update zones:\n %s' % json.dumps(zone_file_dict.keys(), indent=4))
+            log.info('Update zones:\n %s' % (','.join(zone_file_dict.keys())))
             send_changes_to_opsteam(current_zonefile_path, tmp_zonefile_path)
             if DnsdbApi.can_reload():
                 reload_and_backup_zones(zone_file_dict)
