@@ -31,7 +31,8 @@ CONF.register_opts([
 CONF.register_opts([
     cfg.StrOpt('allow_ip'),
     cfg.StrOpt('secret_key'),
-    cfg.StrOpt('env')
+    cfg.StrOpt('env'),
+    cfg.StrOpt('header_template', default='../etc/template/zone_header')
 ], 'etc')
 
 CONF.register_opts([

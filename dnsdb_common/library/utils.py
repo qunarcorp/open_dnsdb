@@ -7,7 +7,7 @@ import os
 import re
 import socket
 from importlib import import_module
-
+from hashlib import md5
 from oslo.config import cfg
 
 from dnsdb_common.dal import db
@@ -152,3 +152,8 @@ def make_tmp_dir(tmp_dir):
     if not os.path.exists(tmp_dir):
         os.mkdir(tmp_dir)
     return tmp_dir
+
+def string_md5(string):
+    if isinstance(string, unicode):
+        string = string.encode('utf-8')
+    return md5(string).hexdigest()

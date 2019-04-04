@@ -106,7 +106,7 @@ def update_named_conf(group_name):
     new_name_path = os.path.join(named_dir, group_name)
     to_use_file = '{0}_used'.format(new_name_path)
     with open(new_name_path, 'w') as f:
-        f.write(named_conf)
+        f.write(named_conf.encode('utf-8'))
     shutil.copy(new_name_path, to_use_file)
     # 如果是local dns  检查前先获取本机ip 将listen-on {ip};添加到option中
     if _is_local_dns():

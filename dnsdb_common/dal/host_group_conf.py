@@ -3,7 +3,6 @@
 import os
 import tempfile
 from collections import OrderedDict
-from hashlib import md5
 
 from oslo.config import cfg
 
@@ -16,7 +15,7 @@ from .models import DnsSerial
 from .models import DnsZoneConf
 from .models import DnsRecord
 from ..library.exception import BadParam, DnsdbException
-from ..library.utils import is_valid_ip_format, is_valid_domain_name
+from ..library.utils import is_valid_ip_format, is_valid_domain_name, string_md5
 from dnsdb.deploy import start_deploy_job
 
 CONF = cfg.CONF
@@ -140,7 +139,7 @@ class HostGroupConfDal(object):
     def check_named_conf(group_name, named_conf):
         tmp_file = tempfile.mktemp(prefix=group_name, dir='/tmp')
         with open(tmp_file, 'w') as f:
-            f.write(named_conf)
+            f.write(named_conf.encode('utf-8'))
 
         if CONF.etc.env != 'dev':
             err_file = tempfile.mktemp(prefix='err_', dir='/tmp')
@@ -177,11 +176,11 @@ class HostGroupConfDal(object):
         if not conf:
             raise BadParam('Can\'t find %s named.conf!' % group_name)
 
-        if md5(conf.conf_content).hexdigest() == md5(conf_content).hexdigest():
+        if string_md5(conf.conf_content) == string_md5(conf_content):
             raise BadParam('No change')
 
         named_conf = HostGroupConfDal.build_complete_named_conf(group_name, conf_content)
-        group_conf_md5 = md5(named_conf).hexdigest()
+        group_conf_md5 = string_md5(named_conf)
         conf.conf_content = conf_content
 
         # 生成md5写入到数据库中
@@ -230,9 +229,9 @@ class HostGroupConfDal(object):
         for group in host_groups:
             group_md5_dict[group] = {}
             named_conf = HostGroupConfDal.build_complete_named_conf(group)
-            conf_md5 = md5(named_conf).hexdigest()
+            conf_md5 = string_md5(named_conf)
             DnsHostGroup.query.filter_by(group_name=group).update({
-                'group_conf_md5': md5(named_conf).hexdigest()
+                'group_conf_md5': conf_md5
             })
             group_md5_dict[group]['hosts'] = HostGroupConfDal.get_host_by_group(group)
             group_md5_dict[group]['md5'] = conf_md5
@@ -260,7 +259,7 @@ class HostGroupConfDal(object):
             group_md5_dict = HostGroupConfDal.update_group_conf_md5(conf_dict.keys())
 
             if add_header:
-                file_name = '../etc/template/zone_header'
+                file_name = CONF.etc.header_template
                 # add template header
                 with open(file_name) as f:
                     header = f.read()
