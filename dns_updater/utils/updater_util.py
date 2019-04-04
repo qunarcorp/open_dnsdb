@@ -201,7 +201,7 @@ def make_zone_file(zone, filename, serial, header, record_list):
     try:
         with open(filename, 'w') as f:
             f.writelines(header)
-        run_command_with_code('sed -i "" "s/pre_serial/%s/" %s' % (str(serial), filename))
+        run_command_with_code('sed -i "s/pre_serial/%s/" %s' % (str(serial), filename))
 
         with open(filename, 'a') as f:
             for item in record_list:
