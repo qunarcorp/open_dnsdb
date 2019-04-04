@@ -262,7 +262,7 @@ class HostGroupConfDal:
             group_md5_dict = HostGroupConfDal.update_group_conf_md5(conf_dict.keys())
 
             if add_header:
-                file_name = '../etc/template/zone_header'
+                file_name = CONF.etc.header_template
                 # add template header
                 with open(file_name) as f:
                     header = f.read()
