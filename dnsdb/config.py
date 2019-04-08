@@ -24,6 +24,7 @@ CONF.register_opts([
     cfg.StrOpt('server'),
     cfg.StrOpt('port'),
     cfg.StrOpt('from_addr'),
+    cfg.StrOpt('password', default=''),
     cfg.StrOpt('info_list'),
     cfg.StrOpt('alert_list'),
 ], 'MAIL')

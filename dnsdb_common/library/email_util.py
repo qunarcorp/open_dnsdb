@@ -13,8 +13,7 @@ log = getLogger(__name__)
 CONF = cfg.CONF
 
 
-def send_email(subject, content, sender=None, receivers=None):
-    s = smtplib.SMTP()
+def send_email(subject, content, sender=None, password=None, receivers=None):
     msg = ''
     try:
         if content is None:
@@ -22,6 +21,7 @@ def send_email(subject, content, sender=None, receivers=None):
         msg = MIMEText(content, 'plain', 'utf-8')
         if sender is None:
             sender = CONF.MAIL.from_addr
+            password = CONF.MAIL.password
         elif not isinstance(sender, str):
             raise TypeError('sender should be str type.')
         if receivers is None:
@@ -35,11 +35,16 @@ def send_email(subject, content, sender=None, receivers=None):
         msg['To'] = Header(receivers, 'utf-8')
         s = smtplib.SMTP()
         s.connect(CONF.MAIL.server, CONF.MAIL.port)
+        if password:
+            s.login(sender, password)
         s.sendmail(sender, to_list, msg.as_string())
     except Exception as e:
         log.error("Failed to send email:%s, because: %s" % (msg, e))
     finally:
-        s.close()
+        try:
+            s.close()
+        except:
+            pass
 
 
 def send_alert_email(content, sender=None):
