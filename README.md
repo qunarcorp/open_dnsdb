@@ -60,6 +60,7 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
 
 ## 安装手册
 * 环境 Python:3.6.8  pip:19.0.3
+* 支持的浏览器: chrome, Firefox
 * 安装virtualenv: pip install virtualenv
 * 项目克隆
 * 切换到项目目录: cd open_dnsdb 
