@@ -34,7 +34,7 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
 * 配置管理, 管理zone文件，线上配置与数据库配置同步，修改配置自动完成部署.
 * 日志, 关键操作都有日志记录，并可通过页面进行查询，便于审查
 * 支持RESTful API, 支持Webhook.
-* 基于Python 2/3 开发, 支持Postgresql和SQLite.
+* 基于Python 3 开发, 支持Postgresql和SQLite.
 
 
 ## 应用结构
