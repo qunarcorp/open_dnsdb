@@ -13,6 +13,7 @@ from dns_updater.config import setup_config
 from dns_updater.utils.tool_classes import (QApplication)
 from dnsdb_common.library.exception import UpdaterErr
 from dnsdb_common.library.log import (getLogger, setup)
+from dnsdb_common.library.utils import make_tmp_dir
 
 setup('dnsdb_upater_zone')
 log = getLogger(__name__)
@@ -69,8 +70,15 @@ def _check_necessary_options():
 
             if op.endswith('_dir'):
                 dir_path = getattr(CONF.etc, op)
-                if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
-                    raise UpdaterErr(message='No such directory: %s' % dir_path)
+                if not os.path.exists(dir_path):
+                    try:
+                        make_tmp_dir(dir_path)
+                    except Exception as e:
+                        raise UpdaterErr(message='make directory error: %s, reason: %s'
+                                                 % (dir_path, e))
+                if not os.path.isdir(dir_path):
+                    raise UpdaterErr(message='%s=%s need to be a directory, pleace change etc/beta/dnsdb-updater.conf'
+                                             % (op, dir_path))
 
 
 def _signal_handler(n=0, e=0):
