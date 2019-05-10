@@ -81,12 +81,17 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
 
     ```bash
     $ python tools/install_venv.py -p /usr/bin/python3.6
-    命令行参数:
-    	-p 使用的python解释器版本, 确保使用virtualenv创建虚拟环境是python3.6+
-    		 如果确认virtualenv命令是用python3安装的, 这个参数可以省略
+    # 命令行参数:
+    # 	-p 使用的python解释器版本, 确保使用virtualenv创建虚拟环境是python3.6+
+    #		如果确认virtualenv命令是用python3安装的, 这个参数可以省略
     ```
 
-* 启用虚拟环境 `source .venv/bin/activate `
+* 启用虚拟环境
+
+    ```bash
+     $ source .venv/bin/activate
+     $ python -V 	# 确认python版本为3.6+
+    ```
 
 * 初始化数据库
     *  数据库配置: etc/beta/common.conf
@@ -107,7 +112,9 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
         # python3版本supervisor安装
         pip install git+https://github.com/Supervisor/supervisor
         ```
+
   * 生成默认配置: echo_supervisord_conf > /etc/supervisord.conf
+
   * 修改配置文件 vim /etc/supervisord.conf
     ```ini
     [supervisord]
@@ -116,13 +123,20 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
     [include]
     files = /etc/supervisor/conf.d/*.conf
     ```
+
   * mkdir -p /etc/supervisor/conf.d
+
   * 添加openDnsdb项目配配置: 
-  	* dnsdb: cp etc/beta/supervisor-dnsdb.conf /etc/supervisor/conf.d/open-dnsdb.conf
-  	* updater(仅bind服务器需要): cp etc/beta/supervisor-updater.conf /etc/supervisor/conf.d/open-dnsdb-updater.conf
+    * dnsdb: cp etc/beta/supervisor-dnsdb.conf /etc/supervisor/conf.d/open-dnsdb.conf
+    * updater(仅bind服务器需要): cp etc/beta/supervisor-updater.conf /etc/supervisor/conf.d/open-dnsdb-updater.conf
+
   * 启动: supervisord -c /etc/supervisord.conf
+
   * 查看是否启动成功: ps aux | grep supervisord
+
   * supervisorctl -c /etc/supervisord.conf
+
+  
 
 ## ChangeLog
 
@@ -136,5 +150,9 @@ For OpenDnsdb operations, a DNS configuration file is generated and synchronized
 
    ​	升级python版本，支持python3.6+
 
-感谢[wss434631143](https://github.com/wss434631143)同学对项目修改提出的宝贵建议
+## 感谢
+
+感谢以下同学对项目修改提出的宝贵建议：
+
+* [wss434631143](https://github.com/wss434631143)
 

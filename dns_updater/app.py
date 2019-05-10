@@ -24,6 +24,9 @@ def create_app():
     app = Flask(__name__)
     app.config['SECRET_KEY'] = CONF.etc.secret_key
 
+    from dns_updater.utils.updater_util import check_necessary_options
+    check_necessary_options()
+
     @app.route("/healthcheck.html", methods=['GET'])
     def health_check():
         try:

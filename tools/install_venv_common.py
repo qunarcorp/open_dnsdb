@@ -85,7 +85,7 @@ class InstallVenv(object):
     def check_dependencies(self):
         self.get_distro().install_virtualenv()
 
-    def create_virtualenv(self, no_site_packages=True, python_interpreter=False):
+    def create_virtualenv(self, no_site_packages=True, python_interpreter=None):
         """Creates the virtual environment and installs PIP.
 
         Creates the virtual environment and installs PIP only into the
