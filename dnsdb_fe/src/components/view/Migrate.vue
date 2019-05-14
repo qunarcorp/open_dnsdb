@@ -439,6 +439,10 @@
       },
 
       migrateRooms () {
+        if (this.srcRoomsChecked.length === 0 || this.ispsChecked.length === 0 || this.dstRoomsChecked.length === 0) {
+          this.$message.warning('参数不能为空')
+          return
+        }
         this.$confirm('是否开始迁移', '提示', {
           confirmButtonText: '确定',
           cancelButtonText: '取消',

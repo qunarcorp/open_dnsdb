@@ -52,27 +52,6 @@ def _create_pid_file():
         raise UpdaterErr("Failed to lock pidfile, perhaps named_updater is already running.")
 
 
-def _check_necessary_options():
-    needed_conf_options = {
-        'etc': ["log_dir", "tmp_dir", "backup_dir", "pidfile", 'env'],
-        'MAIL': ['from_addr', 'server', 'port', 'info_list', 'alert_list'],
-    }
-
-    for section, options in needed_conf_options.items():
-        if not hasattr(CONF, section):
-            raise UpdaterErr(message=section + " section not found.")
-
-        sec = getattr(CONF, section)
-        for op in options:
-            if not hasattr(sec, op):
-                raise UpdaterErr(message="%s.%s option not found." % (section, op))
-
-            if op.endswith('_dir'):
-                dir_path = getattr(CONF.etc, op)
-                if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
-                    raise UpdaterErr(message='No such directory: %s' % dir_path)
-
-
 def _signal_handler(n=0, e=0):
     log.error("Shuting down normally.")
     sys.exit(0)
@@ -87,9 +66,10 @@ class DnsdbUpdater(QApplication):
         log.error('Host belong to group: %s' % CONF.host_group)
 
     def init_app(self):  # 可选
+        from dns_updater.utils.updater_util import check_necessary_options
         super(DnsdbUpdater, self).init_app()
         try:
-            _check_necessary_options()
+            check_necessary_options()
             _create_pid_file()
             # SIGTERM  software termination signal
             signal.signal(signal.SIGTERM, _signal_handler)

@@ -85,7 +85,7 @@ class InstallVenv(object):
     def check_dependencies(self):
         self.get_distro().install_virtualenv()
 
-    def create_virtualenv(self, no_site_packages=True):
+    def create_virtualenv(self, no_site_packages=True, python_interpreter=None):
         """Creates the virtual environment and installs PIP.
 
         Creates the virtual environment and installs PIP only into the
@@ -93,11 +93,13 @@ class InstallVenv(object):
         """
         if not os.path.isdir(self.venv):
             print('Creating venv...', end=' ')
+            command = ['virtualenv', '-q']
             if no_site_packages:
-                self.run_command(['virtualenv', '-q', '--no-site-packages',
-                                 self.venv])
-            else:
-                self.run_command(['virtualenv', '-q', self.venv])
+                command.append('--no-site-packages')
+            if python_interpreter:
+                command.extend(('-p', python_interpreter))
+            command.append(self.venv)
+            self.run_command(command)
             print('done.')
         else:
             print("venv already exists...")
@@ -133,6 +135,9 @@ class InstallVenv(object):
                           action='store_true',
                           help="Do not inherit packages from global Python "
                                "install.")
+        parser.add_option('-p', '--python-interpreter',
+                          action='store',
+                          help="The Python interpreter to use")
         return parser.parse_args(argv[1:])[0]
 
 

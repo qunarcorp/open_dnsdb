@@ -71,12 +71,20 @@
     <hr/>
     <div class="preview-panel">
       <span class="title">域名统计</span>
-      <div>
-        <br/>
-        <div v-for="domain in domainCount" :key="domain[0]">
-          <div class="title">{{domain.zone}}</div>
-          <label class="title">{{domain.count}}</label>
-        </div>
+      <div class="tab-panel" v-if="domainCount.length > 0">
+        <el-table
+          class="medium-table"
+          border
+          :data="domainCount">
+          <el-table-column 
+            prop="zone"
+            label="Zone"/>
+          <el-table-column 
+            prop="count"
+            label="域名数"
+            align="center">   
+          </el-table-column>
+        </el-table>
       </div>
     </div>
   </div>
@@ -153,5 +161,6 @@
 
   .medium-table {
     width: 500px;
+    font-size:16px;
   }
 </style>

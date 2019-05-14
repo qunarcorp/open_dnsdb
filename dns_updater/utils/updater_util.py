@@ -16,8 +16,7 @@ from dnsdb_common.library.api import Api
 from dnsdb_common.library.email_util import send_email
 from dnsdb_common.library.exception import UpdaterErr
 from dnsdb_common.library.log import getLogger
-
-long = int  # Python 3
+from dnsdb_common.library.utils import make_tmp_dir
 
 log = getLogger(__name__)
 
@@ -37,6 +36,34 @@ def run_command_with_code(cmd, check_exit_code=True):
         raise UpdaterErr('Command "%s" failed.\n%s' % (cmd, output))
     log.info('Command "%s" success.' % ' '.join(cmd))
     return output, retcode
+
+def check_necessary_options():
+    needed_conf_options = {
+        'etc': ["log_dir", "tmp_dir", "backup_dir", "pidfile", 'env'],
+        'MAIL': ['from_addr', 'server', 'port', 'info_list', 'alert_list'],
+    }
+
+    for section, options in needed_conf_options.items():
+        if not hasattr(CONF, section):
+            raise UpdaterErr(message=section + " section not found.")
+
+        sec = getattr(CONF, section)
+        for op in options:
+            if not hasattr(sec, op):
+                raise UpdaterErr(message="%s.%s option not found." % (section, op))
+
+            if op.endswith('_dir'):
+                dir_path = getattr(sec, op)
+                if not os.path.exists(dir_path):
+                    try:
+                        make_tmp_dir(dir_path)
+                    except Exception as e:
+                        raise UpdaterErr(message='make directory error: %s, reason: %s'
+                                                 % (dir_path, e))
+                if not os.path.isdir(dir_path):
+                    raise UpdaterErr(message='%s=%s need to be a directory, pleace change etc/beta/dnsdb-updater.conf'
+                                             % (op, dir_path))
+
 
 
 def get_self_ip():
@@ -242,7 +269,7 @@ def _get_serial_from_zone_file(path):
 def is_need_update_zone(tmp_zonefile_path, current_zonefile_path):
     new_serial = _get_serial_from_zone_file(tmp_zonefile_path)
     current_serial = _get_serial_from_zone_file(current_zonefile_path)
-    if long(new_serial) > long(current_serial):
+    if int(new_serial) > int(current_serial):
         log.info("Current serial is %s, serial in request is %s, need update." % (current_serial, new_serial))
         return True
     log.info("Current serial is %s, serial in request is %s, need no update." % (current_serial, new_serial))

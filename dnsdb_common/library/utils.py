@@ -64,7 +64,7 @@ def format_ip(ip):
 
 def format_ipv4(ip):
     if '.' not in ip:
-        raise BadParam('Invalid IPv6 format', msg_ch='IPv6格式错误')
+        raise BadParam('Invalid IPv6 format', msg_ch='IPv4格式错误')
     try:
         ip = ipaddress.ip_address(ip)
     except Exception as e:
