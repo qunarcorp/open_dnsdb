@@ -103,6 +103,8 @@ CONF.register_opts([
     cfg.StrOpt('mkrdns'),
     cfg.StrOpt('acl_dir'),
     cfg.StrOpt('rndc'),
+    cfg.StrOpt('user', default='named'),
+    cfg.StrOpt('group', default='named'),
 ], 'bind_default')
 
 CONF.register_opts([
