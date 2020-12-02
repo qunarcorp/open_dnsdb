@@ -86,7 +86,8 @@ def copy_named_conf(named_file):
     # 备份
     backup_file('named', named_path)
     status, output = commands.getstatusoutput(
-        'cp %s %s && chown named:named %s' % (named_file, named_path, named_path))
+        f'cp {named_file} {named_path} && chown {CONF.bind_default.user}:{CONF.bind_default.group} {named_path}'
+    )
     if status == 0:
         log.info('update name.conf ok')
     else:
@@ -116,7 +117,7 @@ def update_named_conf(group_name):
     # 如果是local dns  检查前先获取本机ip 将listen-on {ip};添加到option中
     if _is_local_dns():
         output, status = os.system(
-            "ifconfig | grep inet | awk '{print $2}' | awk -F '/' '{print $1}' | grep  -E '(^127\.|^192\.|^10\.)'")
+            "ifconfig | grep inet | awk '{print $2}' | awk -F '/' '{print $1}' | grep  -E '(^127\.|^192\.|^10\.|^172\.)'")
         iplist = [ip.strip() for ip in output.split('\n')]
         if len(iplist) <= 1:
             raise UpdaterErr('listen ip %s replace failed' % ','.join(iplist))
