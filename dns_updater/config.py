@@ -127,6 +127,11 @@ CONF.register_opts([
     cfg.StrOpt('rndc'),
 ], 'Master')
 
+CONF.register_opts([
+    cfg.StrOpt('user', default='named'),
+    cfg.StrOpt('group', default='named'),
+], 'backup')
+
 
 def setup_config(app_env, app_kind, conf_dir):
     common_config_file = os.path.join(conf_dir, "etc/{}/common.conf".format(app_env))
