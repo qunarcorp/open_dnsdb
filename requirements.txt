@@ -4,7 +4,7 @@ Flask-Login==0.4.1
 Flask-Migrate==2.4.0
 Flask-RESTful==0.3.7
 Flask-SQLAlchemy==2.3.2
-httplib2==0.12.1
+httplib2==0.19.0
 jsonschema==3.0.1
 oslo.config==6.8.1
 multiping==1.1.2
