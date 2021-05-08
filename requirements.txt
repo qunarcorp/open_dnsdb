@@ -13,4 +13,4 @@ requests==2.21.0
 Sphinx==1.8.4
 sphinx-rtd-theme==0.4.3
 gunicorn==19.9.0
-eventlet==0.24.1
+eventlet==0.31.0
